@@ -1,0 +1,39 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rounded square background with gradient -->
+  <rect width="512" height="512" rx="120" fill="url(#background_gradient)" />
+  
+  <!-- Abstract wave shape with multiple gradients -->
+  <path d="M138.5 256C138.5 190.5 192 138.5 256 138.5C321 138.5 373.5 190.5 373.5 256C373.5 321.5 321 373.5 256 373.5C192 373.5 138.5 321.5 138.5 256Z" stroke="url(#wave_gradient1)" stroke-width="35" stroke-linecap="round" />
+  <path d="M160 256C160 202.5 203 160 256 160C309 160 352 202.5 352 256C352 309.5 309 352 256 352C203 352 160 309.5 160 256Z" stroke="url(#wave_gradient2)" stroke-width="32" stroke-linecap="round" />
+  <path d="M185 256C185 217 217 185 256 185C295 185 327 217 327 256C327 295 295 327 256 327C217 327 185 295 185 256Z" stroke="url(#wave_gradient3)" stroke-width="28" stroke-linecap="round" />
+  
+  <!-- Definitions for gradients used in the icon -->
+  <defs>
+    <!-- Background gradient - soft green yellow -->
+    <linearGradient id="background_gradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#C5F678" />
+      <stop offset="0.3" stop-color="#A8F0A0" />
+      <stop offset="0.6" stop-color="#7DE9C3" />
+      <stop offset="1" stop-color="#FFB88C" />
+    </linearGradient>
+    
+    <!-- Wave gradients for different paths -->
+    <linearGradient id="wave_gradient1" x1="138.5" y1="138.5" x2="373.5" y2="373.5" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4CD964" />
+      <stop offset="0.5" stop-color="#5AC8FA" />
+      <stop offset="1" stop-color="#007AFF" />
+    </linearGradient>
+    
+    <linearGradient id="wave_gradient2" x1="160" y1="160" x2="352" y2="352" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFCC00" />
+      <stop offset="0.5" stop-color="#FF9500" />
+      <stop offset="1" stop-color="#FF3B30" />
+    </linearGradient>
+    
+    <linearGradient id="wave_gradient3" x1="185" y1="185" x2="327" y2="327" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#C644FC" />
+      <stop offset="0.5" stop-color="#5856D6" />
+      <stop offset="1" stop-color="#007AFF" />
+    </linearGradient>
+  </defs>
+</svg>

@@ -20,6 +20,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { updateProfile, logout, ProfileUpdateData } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { Smartphone, ArrowRight } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const profileSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters").optional().or(z.literal("")),
@@ -106,6 +108,8 @@ export default function ProfilePage() {
       .toUpperCase();
   };
 
+  const isMobile = useIsMobile();
+
   return (
     <div className="flex-1 p-4 overflow-auto">
       <Tabs defaultValue="profile" className="w-full">
@@ -176,6 +180,34 @@ export default function ProfilePage() {
                 className="w-full"
               >
                 {isLoggingOut ? "Logging out..." : "Logout"}
+              </Button>
+            </CardFooter>
+          </Card>
+          
+          {/* Mobile Installation Card */}
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center text-lg">
+                <Smartphone className="h-5 w-5 mr-2 text-blue-500" />
+                Install NutriLens on your device
+              </CardTitle>
+              <CardDescription>
+                Get a better experience by installing NutriLens as a mobile app
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pb-2">
+              <p className="text-sm mb-4">
+                NutriLens works best when installed as an app on your mobile device. Get full-screen experience, faster loading times, and offline capabilities.
+              </p>
+            </CardContent>
+            <CardFooter className="pt-0">
+              <Button 
+                variant="outline"
+                className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"
+                onClick={() => navigate("/mobile-install")}
+              >
+                View Installation Guide
+                <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </CardFooter>
           </Card>

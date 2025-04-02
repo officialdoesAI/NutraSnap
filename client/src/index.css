@@ -9,5 +9,32 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    /* Prevent page overscroll on mobile */
+    overscroll-behavior-y: none;
+    /* Prevent iOS elastic scrolling effect */
+    -webkit-overflow-scrolling: touch;
+    /* Remove tap highlight on mobile */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Improve mobile app-like experience */
+  html, body, #root {
+    @apply h-full;
+    @apply w-full;
+    @apply overflow-x-hidden;
+  }
+
+  /* Prevent text scaling */
+  html {
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+  
+  /* Hide address bar if possible */
+  @media screen and (max-width: 767px) {
+    body {
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+    }
   }
 }
