@@ -275,13 +275,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerId = customer.id;
       }
       
-      // Create payment intent for £0.10 subscription 
+      // Create payment intent for £0.30 subscription 
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: 10, // £0.10 in pence
+        amount: 30, // £0.30 in pence
         currency: 'gbp',
         customer: customerId,
         payment_method_types: ['card'],
-        description: 'NutriLens Pro Monthly Subscription',
+        description: 'NutriLens Pro Monthly Subscription - £0.30/month',
         metadata: {
           userId: userId.toString(),
           subscriptionType: 'monthly'

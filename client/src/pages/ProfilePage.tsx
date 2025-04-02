@@ -235,7 +235,7 @@ export default function ProfilePage() {
                         </span>
                       </CardTitle>
                       <CardDescription className="text-center">
-                        <span className="text-xl font-bold">£0.10</span> / month
+                        <span className="text-xl font-bold">£0.30</span> / month
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="text-sm space-y-2 py-2">
