@@ -7,6 +7,11 @@ export interface User {
   displayName: string | null;
   profilePicture: string | null;
   createdAt: string;
+  // Subscription fields
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  subscriptionStatus?: string;
+  subscriptionExpiresAt?: string | null;
 }
 
 export interface LoginCredentials {

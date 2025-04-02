@@ -30,7 +30,7 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
-  const { user, scanCount, resetScanCount } = useAuth();
+  const { user, scanCount, resetScanCount, hasActiveSubscription } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -190,42 +190,68 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-muted p-4 rounded-lg">
-                <div className="flex justify-between items-center mb-2">
-                  <div className="font-medium">Available Scans</div>
-                  <div className="text-right">
-                    <span className="text-xl font-bold">{Math.max(0, 2 - scanCount)}</span>
-                    <span className="text-muted-foreground"> / 2</span>
+              {hasActiveSubscription ? (
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200 mb-4">
+                  <div className="flex items-center mb-2">
+                    <div className="mr-2 h-6 w-6 rounded-full bg-green-100 flex items-center justify-center">
+                      <svg className="h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </div>
+                    <div className="text-green-800 font-medium">Active Subscription</div>
                   </div>
+                  <p className="text-sm text-green-700">
+                    Your NutriLens Pro subscription is active. You have unlimited scans.
+                  </p>
+                  {user?.subscriptionExpiresAt && (
+                    <p className="text-xs text-green-600 mt-2">
+                      Next billing date: {new Date(user.subscriptionExpiresAt).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                  <div 
-                    className="bg-primary h-2.5 rounded-full" 
-                    style={{width: `${Math.max(0, 100 - (scanCount * 50))}%`}}
-                  ></div>
-                </div>
-              </div>
-              
-              <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-center text-lg">
-                    <span className="bg-gradient-to-r from-primary to-primary-500 bg-clip-text text-transparent">
-                      NutriLens Pro
-                    </span>
-                  </CardTitle>
-                  <CardDescription className="text-center">
-                    <span className="text-xl font-bold">£2</span> / month
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="text-sm space-y-2 py-2">
-                  <p className="text-center">Unlock unlimited scans and premium features</p>
-                </CardContent>
-                <CardFooter>
-                  <Button className="w-full">
-                    Subscribe Now
-                  </Button>
-                </CardFooter>
-              </Card>
+              ) : (
+                <>
+                  <div className="bg-muted p-4 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="font-medium">Available Scans</div>
+                      <div className="text-right">
+                        <span className="text-xl font-bold">{Math.max(0, 2 - scanCount)}</span>
+                        <span className="text-muted-foreground"> / 2</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div 
+                        className="bg-primary h-2.5 rounded-full" 
+                        style={{width: `${Math.max(0, 100 - (scanCount * 50))}%`}}
+                      ></div>
+                    </div>
+                  </div>
+                  
+                  <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-center text-lg">
+                        <span className="bg-gradient-to-r from-primary to-primary-500 bg-clip-text text-transparent">
+                          NutriLens Pro
+                        </span>
+                      </CardTitle>
+                      <CardDescription className="text-center">
+                        <span className="text-xl font-bold">£2</span> / month
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="text-sm space-y-2 py-2">
+                      <p className="text-center">Unlock unlimited scans and premium features</p>
+                    </CardContent>
+                    <CardFooter>
+                      <Button 
+                        className="w-full"
+                        onClick={() => navigate("/checkout")}
+                      >
+                        Subscribe Now
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

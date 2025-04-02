@@ -6,6 +6,16 @@ import { insertMealRecordSchema, insertUserSchema, type User } from "@shared/sch
 import { fromZodError } from "zod-validation-error";
 import passport from "passport";
 import { isAuthenticated, sanitizeUser } from "./auth";
+import Stripe from "stripe";
+
+// Initialize Stripe with API key
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.warn("Missing STRIPE_SECRET_KEY environment variable. Stripe integration won't work.");
+}
+
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY) 
+  : null;
 
 // User type with id for authenticated requests
 type UserWithId = Partial<User> & {
@@ -224,6 +234,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Error fetching meal record", 
         error: error.message 
       });
+    }
+  });
+
+  // ===== Subscription Payment Routes =====
+
+  // Create subscription
+  app.post("/api/create-subscription", isAuthenticated, async (req: Request, res: Response) => {
+    if (!stripe) {
+      return res.status(500).json({ message: "Stripe is not configured" });
+    }
+
+    try {
+      const user = req.user as UserWithId;
+      const userId = user.id;
+      
+      // If user already has an active subscription, return success
+      const existingUser = await storage.getUser(userId);
+      if (existingUser?.subscriptionStatus === 'active') {
+        return res.status(200).json({ 
+          message: "User already has an active subscription",
+          subscriptionStatus: 'active'
+        });
+      }
+
+      // Create or retrieve Stripe customer
+      let customerId = existingUser?.stripeCustomerId;
+      
+      if (!customerId) {
+        // Create a new customer
+        const customer = await stripe.customers.create({
+          name: existingUser?.displayName || existingUser?.username,
+          metadata: {
+            userId: userId.toString()
+          }
+        });
+        
+        // Save customer ID to user
+        await storage.updateStripeCustomerId(userId, customer.id);
+        customerId = customer.id;
+      }
+      
+      // Create payment intent for £2.00 subscription 
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: 200, // £2.00 in pence
+        currency: 'gbp',
+        customer: customerId,
+        payment_method_types: ['card'],
+        description: 'NutriLens Pro Monthly Subscription',
+        metadata: {
+          userId: userId.toString(),
+          subscriptionType: 'monthly'
+        }
+      });
+
+      // Return client secret needed for Stripe.js
+      res.json({
+        clientSecret: paymentIntent.client_secret
+      });
+    } catch (error: any) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ 
+        message: "Error creating subscription", 
+        error: error.message 
+      });
+    }
+  });
+
+  // Webhook to handle successful payments
+  app.post("/api/webhooks/stripe", async (req: Request, res: Response) => {
+    if (!stripe) {
+      return res.status(500).json({ message: "Stripe is not configured" });
+    }
+
+    const payload = req.body;
+    const sig = req.headers['stripe-signature'] as string;
+    let event;
+
+    try {
+      // Verify webhook signature if you have a webhook secret
+      if (process.env.STRIPE_WEBHOOK_SECRET) {
+        event = stripe.webhooks.constructEvent(
+          payload,
+          sig,
+          process.env.STRIPE_WEBHOOK_SECRET
+        );
+      } else {
+        // For development, just parse the payload
+        event = payload;
+      }
+
+      // Handle the event
+      switch (event.type) {
+        case 'payment_intent.succeeded':
+          const paymentIntent = event.data.object;
+          const userId = parseInt(paymentIntent.metadata.userId);
+          
+          if (!isNaN(userId)) {
+            // Set subscription as active
+            const expiryDate = new Date();
+            expiryDate.setMonth(expiryDate.getMonth() + 1);
+            
+            await storage.updateSubscriptionStatus(
+              userId, 
+              'active', 
+              expiryDate
+            );
+            
+            console.log(`Subscription activated for user ${userId}`);
+          }
+          break;
+          
+        case 'payment_intent.payment_failed':
+          const failedPayment = event.data.object;
+          console.error(`Payment failed for user ${failedPayment.metadata.userId}`);
+          break;
+          
+        default:
+          console.log(`Unhandled event type ${event.type}`);
+      }
+
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error('Webhook error:', error.message);
+      res.status(400).send(`Webhook Error: ${error.message}`);
     }
   });
 

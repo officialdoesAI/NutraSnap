@@ -12,6 +12,7 @@ interface AuthContextType {
   resetScanCount: () => void;
   showPaywall: boolean;
   setShowPaywall: (show: boolean) => void;
+  hasActiveSubscription: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -65,6 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Derived auth state
   const isAuthenticated = !!user;
+  
+  // Check if user has an active subscription
+  const hasActiveSubscription = 
+    user?.subscriptionStatus === 'active' || 
+    (user?.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) > new Date());
 
   return (
     <AuthContext.Provider
@@ -76,7 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         incrementScanCount,
         resetScanCount,
         showPaywall,
-        setShowPaywall
+        setShowPaywall,
+        hasActiveSubscription: !!hasActiveSubscription
       }}
     >
       {children}

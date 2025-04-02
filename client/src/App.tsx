@@ -9,6 +9,7 @@ import HistoryPage from "@/pages/HistoryPage";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 import ProfilePage from "@/pages/ProfilePage";
+import CheckoutPage from "@/pages/CheckoutPage";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -45,6 +46,30 @@ function Router() {
           {() => (
             <RequireAuth>
               <ProfilePage />
+            </RequireAuth>
+          )}
+        </Route>
+        
+        <Route path="/checkout">
+          {() => (
+            <RequireAuth>
+              <CheckoutPage />
+            </RequireAuth>
+          )}
+        </Route>
+        
+        <Route path="/checkout/success">
+          {() => (
+            <RequireAuth>
+              <CheckoutPage />
+            </RequireAuth>
+          )}
+        </Route>
+        
+        <Route path="/checkout/error">
+          {() => (
+            <RequireAuth>
+              <CheckoutPage />
             </RequireAuth>
           )}
         </Route>

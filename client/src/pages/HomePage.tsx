@@ -14,7 +14,7 @@ const HomePage: React.FC = () => {
   const [imageData, setImageData] = useState<string | null>(null);
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { incrementScanCount, scanCount, showPaywall, setShowPaywall } = useAuth();
+  const { incrementScanCount, scanCount, showPaywall, setShowPaywall, hasActiveSubscription } = useAuth();
 
   const analysisMutation = useMutation({
     mutationFn: (imageData: string) => analyzeFoodImage(imageData),
@@ -58,9 +58,7 @@ const HomePage: React.FC = () => {
   };
   
   const handleSubscribe = () => {
-    // Navigate to subscription page
-    navigate("/profile");
-    // Close paywall modal
+    // This is now handled directly in the SubscriptionPaywall component
     setShowPaywall(false);
   };
 
@@ -74,14 +72,16 @@ const HomePage: React.FC = () => {
       return;
     }
     
-    // Check scan limit (2 free scans)
-    if (scanCount >= 2) {
+    // Check if user has an active subscription or free scans remaining
+    if (!hasActiveSubscription && scanCount >= 2) {
       setShowPaywall(true);
       return;
     }
     
-    // Increment scan count
-    incrementScanCount();
+    // Only increment scan count if user doesn't have an active subscription
+    if (!hasActiveSubscription) {
+      incrementScanCount();
+    }
     
     // Proceed with analysis
     analysisMutation.mutate(imageData);
@@ -156,12 +156,22 @@ const HomePage: React.FC = () => {
         onSubscribe={handleSubscribe} 
       />
       
-      {/* Free scan limit indicator */}
-      {scanCount < 2 && (
+      {/* Free scan limit indicator (only shown for non-subscribed users) */}
+      {!hasActiveSubscription && scanCount < 2 && (
         <div className="px-4 py-2 bg-gray-50 border-t">
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-500">Free scans remaining</span>
             <span className="font-medium">{2 - scanCount} / 2</span>
+          </div>
+        </div>
+      )}
+      
+      {/* Pro indicator for subscribed users */}
+      {hasActiveSubscription && (
+        <div className="px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/5 border-t border-primary/20">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-primary font-medium">NutriLens Pro</span>
+            <span className="text-primary/80">Unlimited Scans</span>
           </div>
         </div>
       )}

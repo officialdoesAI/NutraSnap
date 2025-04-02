@@ -10,6 +10,11 @@ export const users = pgTable("users", {
   profilePicture: text("profile_picture"),
   displayName: text("display_name"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Stripe subscription fields
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  subscriptionStatus: text("subscription_status").default("inactive"),
+  subscriptionExpiresAt: timestamp("subscription_expires_at"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({

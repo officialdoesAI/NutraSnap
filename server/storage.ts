@@ -16,6 +16,11 @@ export interface IStorage {
   updateUser(id: number, updates: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | undefined>;
   authenticateUser(username: string, password: string): Promise<User | undefined>;
   
+  // Subscription methods
+  updateStripeCustomerId(userId: number, customerId: string): Promise<User>;
+  updateStripeSubscriptionId(userId: number, subscriptionId: string, status?: string): Promise<User>;
+  updateSubscriptionStatus(userId: number, status: string, expiresAt?: Date): Promise<User>;
+  
   // Food item methods
   getFoodItem(id: number): Promise<FoodItem | undefined>;
   createFoodItem(foodItem: InsertFoodItem): Promise<FoodItem>;
@@ -80,6 +85,45 @@ export class DatabaseStorage implements IStorage {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     
     return isPasswordValid ? user : undefined;
+  }
+  
+  // Subscription methods
+  async updateStripeCustomerId(userId: number, customerId: string): Promise<User> {
+    const result = await db.update(users)
+      .set({ stripeCustomerId: customerId })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return result[0];
+  }
+
+  async updateStripeSubscriptionId(userId: number, subscriptionId: string, status: string = 'active'): Promise<User> {
+    const result = await db.update(users)
+      .set({ 
+        stripeSubscriptionId: subscriptionId,
+        subscriptionStatus: status
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return result[0];
+  }
+
+  async updateSubscriptionStatus(userId: number, status: string, expiresAt?: Date): Promise<User> {
+    const updateValues: Partial<User> = { 
+      subscriptionStatus: status
+    };
+    
+    if (expiresAt) {
+      updateValues.subscriptionExpiresAt = expiresAt;
+    }
+    
+    const result = await db.update(users)
+      .set(updateValues)
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return result[0];
   }
   
   // Food item methods
@@ -158,6 +202,11 @@ export class MemStorage implements IStorage {
       profilePicture: null,
       displayName: null,
       createdAt: new Date(),
+      // Default subscription fields
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      subscriptionStatus: 'inactive',
+      subscriptionExpiresAt: null
     };
     
     this.users.set(id, user);
@@ -185,6 +234,48 @@ export class MemStorage implements IStorage {
     }
     
     return user;
+  }
+  
+  // Subscription methods
+  async updateStripeCustomerId(userId: number, customerId: string): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    const updatedUser = { ...user, stripeCustomerId: customerId };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async updateStripeSubscriptionId(userId: number, subscriptionId: string, status: string = 'active'): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    const updatedUser = { 
+      ...user, 
+      stripeSubscriptionId: subscriptionId,
+      subscriptionStatus: status
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async updateSubscriptionStatus(userId: number, status: string, expiresAt?: Date): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    const updatedUser = { 
+      ...user, 
+      subscriptionStatus: status,
+      subscriptionExpiresAt: expiresAt || user.subscriptionExpiresAt
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
   }
   
   // Food item methods

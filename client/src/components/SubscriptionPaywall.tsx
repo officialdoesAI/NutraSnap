@@ -1,4 +1,5 @@
 import React from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -11,6 +12,13 @@ interface SubscriptionPaywallProps {
 }
 
 export default function SubscriptionPaywall({ isOpen, onClose, onSubscribe }: SubscriptionPaywallProps) {
+  const [, navigate] = useLocation();
+  
+  const handleSubscribe = () => {
+    onClose();
+    navigate("/checkout");
+  };
+  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
@@ -55,7 +63,7 @@ export default function SubscriptionPaywall({ isOpen, onClose, onSubscribe }: Su
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={onSubscribe} className="w-full">
+              <Button onClick={handleSubscribe} className="w-full">
                 <Zap className="mr-2 h-4 w-4" />
                 Subscribe Now
               </Button>
