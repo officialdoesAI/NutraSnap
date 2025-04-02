@@ -21,7 +21,6 @@ import { useToast } from "@/hooks/use-toast";
 import { updateProfile, logout, ProfileUpdateData } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
-
 const profileSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters").optional().or(z.literal("")),
   profilePicture: z.string().optional().or(z.literal("")),
@@ -106,8 +105,6 @@ export default function ProfilePage() {
       .join("")
       .toUpperCase();
   };
-
-
 
   return (
     <div className="flex-1 p-4 overflow-auto">

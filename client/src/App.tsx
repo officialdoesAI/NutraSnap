@@ -3,7 +3,6 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, RequireAuth } from "@/context/AuthContext";
 import Layout from "@/components/Layout";
-import InstallPrompt from "@/components/InstallPrompt";
 import HomePage from "@/pages/HomePage";
 import ResultsPage from "@/pages/ResultsPage";
 import HistoryPage from "@/pages/HistoryPage";
@@ -86,7 +85,6 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router />
-        <InstallPrompt />
       </AuthProvider>
     </QueryClientProvider>
   );
