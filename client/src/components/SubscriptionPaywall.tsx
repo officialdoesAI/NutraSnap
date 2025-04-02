@@ -41,7 +41,7 @@ export default function SubscriptionPaywall({ isOpen, onClose, onSubscribe }: Su
                 </span>
               </CardTitle>
               <CardDescription className="text-center">
-                <span className="text-2xl font-bold">£2</span> / month
+                <span className="text-2xl font-bold">£0.10</span> / month
               </CardDescription>
             </CardHeader>
             <CardContent className="text-sm space-y-2">

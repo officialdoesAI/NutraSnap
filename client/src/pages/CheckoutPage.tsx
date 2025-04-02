@@ -268,7 +268,7 @@ export default function CheckoutPage() {
           <div className="mb-6 bg-muted p-4 rounded-lg">
             <div className="flex justify-between items-center">
               <span>NutriLens Pro Subscription</span>
-              <span className="font-medium">£2.00/month</span>
+              <span className="font-medium">£0.10/month</span>
             </div>
           </div>
           

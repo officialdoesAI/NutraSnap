@@ -275,9 +275,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerId = customer.id;
       }
       
-      // Create payment intent for £2.00 subscription 
+      // Create payment intent for £0.10 subscription 
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: 200, // £2.00 in pence
+        amount: 10, // £0.10 in pence
         currency: 'gbp',
         customer: customerId,
         payment_method_types: ['card'],
