@@ -2,12 +2,34 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
+    <title>NutriLens - AI Food Analysis</title>
+    <meta name="description" content="NutriLens - AI-powered food analysis for tracking calories and nutrients" />
+    <meta name="theme-color" content="#4F46E5" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="NutriLens" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <!-- This script injects a replit badge into the page, please feel free to remove this line -->
-    <script type="text/javascript" src="https://replit.com/public/js/replit-badge-v3.js"></script>
+    <!-- Capacitor will use this script when building for native platforms -->
+    <script>
+      // This code will only run in the web browser, not in the native app
+      if (typeof navigator.serviceWorker !== 'undefined') {
+        navigator.serviceWorker.register('sw.js')
+          .then(() => console.log('Service worker registered'))
+          .catch(err => console.error('Service worker registration failed', err));
+      }
+    </script>
+    <!-- Only load Replit badge in web environment, not in native app -->
+    <script>
+      if (typeof window.Capacitor === 'undefined') {
+        const scriptElement = document.createElement('script');
+        scriptElement.type = 'text/javascript';
+        scriptElement.src = 'https://replit.com/public/js/replit-badge-v3.js';
+        document.body.appendChild(scriptElement);
+      }
+    </script>
   </body>
 </html>

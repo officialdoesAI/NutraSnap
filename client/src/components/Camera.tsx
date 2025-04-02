@@ -1,6 +1,13 @@
-import React, { useRef, useState, useCallback } from "react";
-import Webcam from "react-webcam";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Capacitor } from '@capacitor/core';
+import Webcam from "react-webcam";
+
+// Platform detection utility functions
+const isPlatform = (platform: string): boolean => {
+  return Capacitor.getPlatform() === platform;
+};
 
 interface CameraProps {
   onImageCapture: (imageData: string) => void;
@@ -11,7 +18,36 @@ const Camera: React.FC<CameraProps> = ({ onImageCapture }) => {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const webcamRef = useRef<Webcam>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isNative, setIsNative] = useState(false);
 
+  // Check if running in native app context
+  useEffect(() => {
+    setIsNative(isPlatform('ios') || isPlatform('android'));
+  }, []);
+
+  // Native camera capture using Capacitor
+  const takePictureNative = async () => {
+    try {
+      const image = await CapacitorCamera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Camera,
+        promptLabelHeader: 'Take a photo of your food',
+        promptLabelCancel: 'Cancel',
+        correctOrientation: true
+      });
+
+      if (image.dataUrl) {
+        setImageSrc(image.dataUrl);
+        onImageCapture(image.dataUrl);
+      }
+    } catch (error) {
+      console.error('Camera error:', error);
+    }
+  };
+
+  // Web camera capture
   const handleCapture = useCallback(() => {
     if (!webcamRef.current) return;
     
@@ -22,6 +58,31 @@ const Camera: React.FC<CameraProps> = ({ onImageCapture }) => {
       setIsCameraActive(false);
     }
   }, [webcamRef, onImageCapture]);
+
+  // File picker for both native and web
+  const handleFilePicker = async () => {
+    if (isNative) {
+      try {
+        const image = await CapacitorCamera.getPhoto({
+          quality: 90,
+          allowEditing: false,
+          resultType: CameraResultType.DataUrl,
+          source: CameraSource.Photos,
+          correctOrientation: true
+        });
+
+        if (image.dataUrl) {
+          setImageSrc(image.dataUrl);
+          onImageCapture(image.dataUrl);
+        }
+      } catch (error) {
+        console.error('Photo gallery error:', error);
+      }
+    } else {
+      // Web file upload
+      fileInputRef.current?.click();
+    }
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -36,12 +97,12 @@ const Camera: React.FC<CameraProps> = ({ onImageCapture }) => {
     reader.readAsDataURL(file);
   };
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
   const activateCamera = () => {
-    setIsCameraActive(true);
+    if (isNative) {
+      takePictureNative();
+    } else {
+      setIsCameraActive(true);
+    }
   };
 
   const videoConstraints = {
@@ -94,12 +155,13 @@ const Camera: React.FC<CameraProps> = ({ onImageCapture }) => {
         <Button
           variant="outline"
           className="flex-1 bg-white border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 flex items-center justify-center"
-          onClick={handleUploadClick}
+          onClick={handleFilePicker}
         >
           <i className="fas fa-upload mr-2"></i>
           Upload Image
         </Button>
         
+        {/* Keep file input for web fallback */}
         <input
           type="file"
           ref={fileInputRef}

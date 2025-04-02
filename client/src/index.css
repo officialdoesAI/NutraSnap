@@ -9,5 +9,43 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    /* iOS specific styles */
+    -webkit-touch-callout: none; /* Disable callout */
+    -webkit-user-select: none;   /* Disable text selection */
+    -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
+    /* Smooth scrolling */
+    -webkit-overflow-scrolling: touch;
+    /* Safe area insets support */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  
+  /* iOS specific adjustments */
+  .ios-app {
+    /* For native iOS app adjustments */
+    padding-top: constant(safe-area-inset-top);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: constant(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Prevent image stretching in WebView */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  
+  /* Make buttons more touch-friendly */
+  button, 
+  [role="button"],
+  input[type="button"],
+  input[type="submit"] {
+    cursor: pointer;
+    min-height: 44px; /* iOS accessibility recommendation */
+  }
+  
+  /* Camera container adjustments for iOS */
+  .camera-container {
+    aspect-ratio: 4/3;
+    min-height: 300px;
   }
 }

@@ -11,6 +11,10 @@ import RegisterPage from "@/pages/RegisterPage";
 import ProfilePage from "@/pages/ProfilePage";
 import CheckoutPage from "@/pages/CheckoutPage";
 import NotFound from "@/pages/not-found";
+import { useEffect } from "react";
+// Capacitor imports for native functionality
+import { Capacitor } from '@capacitor/core';
+import { Camera } from '@capacitor/camera';
 
 function Router() {
   return (
@@ -81,6 +85,25 @@ function Router() {
 }
 
 function App() {
+  // Initialize Capacitor permissions if on native platform
+  useEffect(() => {
+    const checkPermissions = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          // Request camera permissions
+          await Camera.requestPermissions();
+          console.log('Camera permissions requested');
+
+          // Any other Capacitor initialization can go here
+        } catch (error) {
+          console.error('Error requesting permissions:', error);
+        }
+      }
+    };
+
+    checkPermissions();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
