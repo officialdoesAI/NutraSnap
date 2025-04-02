@@ -112,13 +112,25 @@ export async function logout(): Promise<void> {
 export async function getCurrentUser(): Promise<User | null> {
   try {
     const response = await apiRequest('GET', '/api/auth/me');
-    return response.json();
-  } catch (error: unknown) {
-    // Type guard for error with status property
-    if (typeof error === 'object' && error !== null && 'status' in error && error.status === 401) {
-      return null;
+    const data = await response.json();
+    // Ensure we have proper user data
+    if (data && data.id) {
+      return data as User;
     }
-    throw error;
+    return null;
+  } catch (error: unknown) {
+    console.error("Error in getCurrentUser:", error);
+    // Type guard for error with status property
+    if (typeof error === 'object' && error !== null) {
+      if ('status' in error && (error.status === 401 || error.status === 403)) {
+        return null;
+      }
+      if ('message' in error && typeof error.message === 'string' && error.message.includes('Not authenticated')) {
+        return null;
+      }
+    }
+    // Return null for authentication errors, but throw for other types of errors
+    return null;
   }
 }
 

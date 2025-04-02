@@ -30,11 +30,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Fetch current user
   const { data, isLoading, error } = useQuery({
-    queryKey: ["currentUser"],
+    queryKey: ["/api/auth/me"],
     queryFn: async () => {
       try {
         const user = await getCurrentUser();
-        console.log("Auth status: Authenticated as", user?.username);
+        if (user) {
+          console.log("Auth status: Authenticated as", user.username);
+        } else {
+          console.log("Auth status: Not authenticated");
+        }
         return user;
       } catch (error) {
         console.log("Auth status: Not authenticated", error);
@@ -42,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     retry: 1, // Retry once in case of network issues
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 30 * 1000, // 30 seconds (reduced to make auth state update more quickly)
   });
   
   // Ensure user is properly typed as User | null

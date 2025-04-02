@@ -77,21 +77,29 @@ export default function LoginPage() {
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       // Force refetch current user
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      queryClient.refetchQueries({ queryKey: ["/api/auth/me"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/me"] });
       
       toast({
         title: "Login successful!",
         description: "Welcome back to NutriLens",
       });
       
-      // Slightly longer timeout to ensure the query client has time to update
+      // Manually refresh the auth state by refetching with specific options
+      const result = await queryClient.fetchQuery({
+        queryKey: ["/api/auth/me"],
+        staleTime: 0,
+      });
+      
+      console.log("Manual auth check after login:", result);
+      
+      // Wait for a moment to ensure the auth context updates
       setTimeout(() => {
         console.log("Redirecting to home page after login");
         navigate("/", { replace: true });
-      }, 500);
+      }, 1000);
     },
     onError: (error: any) => {
       console.error("Login error:", error);
