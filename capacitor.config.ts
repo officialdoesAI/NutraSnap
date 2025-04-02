@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'io.nutritlens.app',
   appName: 'NutriLens',
-  webDir: 'dist',
+  webDir: 'dist/public',
   // Using bundledWebRuntime in a type-compatible way
   server: {
     androidScheme: 'https',
