@@ -3,6 +3,8 @@ import {
   foodItems, type FoodItem, type InsertFoodItem,
   mealRecords, type MealRecord, type InsertMealRecord
 } from "@shared/schema";
+import { db } from "./lib/db";
+import { eq, desc } from "drizzle-orm";
 
 // Storage interface for CRUD operations
 export interface IStorage {
@@ -21,6 +23,52 @@ export interface IStorage {
   createMealRecord(mealRecord: InsertMealRecord): Promise<MealRecord>;
 }
 
+// Database storage implementation
+export class DatabaseStorage implements IStorage {
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result.length > 0 ? result[0] : undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.username, username));
+    return result.length > 0 ? result[0] : undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const result = await db.insert(users).values(insertUser).returning();
+    return result[0];
+  }
+  
+  // Food item methods
+  async getFoodItem(id: number): Promise<FoodItem | undefined> {
+    const result = await db.select().from(foodItems).where(eq(foodItems.id, id));
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async createFoodItem(insertFoodItem: InsertFoodItem): Promise<FoodItem> {
+    const result = await db.insert(foodItems).values(insertFoodItem).returning();
+    return result[0];
+  }
+  
+  // Meal record methods
+  async getMealRecord(id: number): Promise<MealRecord | undefined> {
+    const result = await db.select().from(mealRecords).where(eq(mealRecords.id, id));
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async getAllMealRecords(): Promise<MealRecord[]> {
+    return await db.select().from(mealRecords).orderBy(desc(mealRecords.timestamp));
+  }
+  
+  async createMealRecord(insertMealRecord: InsertMealRecord): Promise<MealRecord> {
+    const result = await db.insert(mealRecords).values(insertMealRecord).returning();
+    return result[0];
+  }
+}
+
+// Memory storage implementation (keeping for reference)
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private foodItems: Map<number, FoodItem>;
@@ -65,7 +113,17 @@ export class MemStorage implements IStorage {
   
   async createFoodItem(insertFoodItem: InsertFoodItem): Promise<FoodItem> {
     const id = this.foodItemId++;
-    const foodItem: FoodItem = { ...insertFoodItem, id };
+    // Make sure all fields have proper values to satisfy the FoodItem type
+    const foodItem: FoodItem = { 
+      id,
+      name: insertFoodItem.name,
+      description: insertFoodItem.description || null,
+      servingSize: insertFoodItem.servingSize || null,
+      calories: insertFoodItem.calories,
+      protein: insertFoodItem.protein || null,
+      carbs: insertFoodItem.carbs || null,
+      fat: insertFoodItem.fat || null
+    };
     this.foodItems.set(id, foodItem);
     return foodItem;
   }
@@ -83,10 +141,15 @@ export class MemStorage implements IStorage {
   async createMealRecord(insertMealRecord: InsertMealRecord): Promise<MealRecord> {
     const id = this.mealRecordId++;
     const timestamp = new Date();
+    // Make sure all fields have proper values to satisfy the MealRecord type
     const mealRecord: MealRecord = { 
-      ...insertMealRecord,
       id,
-      timestamp
+      name: insertMealRecord.name,
+      imageData: insertMealRecord.imageData || null,
+      totalCalories: insertMealRecord.totalCalories,
+      confidenceScore: insertMealRecord.confidenceScore || null,
+      timestamp,
+      foodItems: insertMealRecord.foodItems
     };
     
     this.mealRecords.set(id, mealRecord);
@@ -94,4 +157,5 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Export the database storage implementation
+export const storage = new DatabaseStorage();

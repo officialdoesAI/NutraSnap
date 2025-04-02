@@ -1,6 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { testDatabaseConnection } from "./lib/db";
+import 'dotenv/config';
 
 const app = express();
 // Increase JSON payload size limit to 50MB for image uploads
@@ -38,6 +40,21 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Test database connection
+  try {
+    const isConnected = await testDatabaseConnection();
+    if (isConnected) {
+      log('Successfully connected to the database', 'db');
+    } else {
+      log('Failed to connect to the database', 'db');
+      process.exit(1);
+    }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    log(`Database connection error: ${errorMessage}`, 'db');
+    process.exit(1);
+  }
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
