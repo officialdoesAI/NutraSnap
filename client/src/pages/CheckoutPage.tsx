@@ -69,7 +69,7 @@ const CheckoutForm = () => {
       </div>
       <div className="flex flex-col space-y-2">
         <Button type="submit" disabled={!stripe || isLoading}>
-          {isLoading ? "Processing..." : "Subscribe Now - £2/month"}
+          {isLoading ? "Processing..." : "Subscribe Now - £0.30/month"}
         </Button>
         <Button type="button" variant="outline" onClick={handleCancel}>
           Cancel

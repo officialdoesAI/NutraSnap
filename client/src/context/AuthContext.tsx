@@ -29,17 +29,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [showPaywall, setShowPaywall] = useState(false);
 
   // Fetch current user
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["currentUser"],
     queryFn: async () => {
       try {
-        return await getCurrentUser();
+        const user = await getCurrentUser();
+        console.log("Auth status: Authenticated as", user?.username);
+        return user;
       } catch (error) {
+        console.log("Auth status: Not authenticated", error);
         return null;
       }
     },
-    retry: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1, // Retry once in case of network issues
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
   
   // Ensure user is properly typed as User | null
@@ -101,18 +104,32 @@ export function useAuth() {
 
 // Authentication protecting component
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [, navigate] = useLocation();
 
+  // Debug authentication state 
   useEffect(() => {
+    console.log("RequireAuth - Auth state:", { isAuthenticated, isLoading, userId: user?.id });
+  }, [isAuthenticated, isLoading, user]);
+
+  useEffect(() => {
+    // Only redirect if we're definitely not authenticated after loading completes
     if (!isLoading && !isAuthenticated) {
-      navigate("/login");
+      console.log("Not authenticated, redirecting to login");
+      navigate("/login", { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate]);
 
+  // Show loading state while checking authentication
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-gray-500">Verifying authentication...</p>
+      </div>
+    );
   }
 
+  // Only render children if authenticated
   return isAuthenticated ? <>{children}</> : null;
 }
