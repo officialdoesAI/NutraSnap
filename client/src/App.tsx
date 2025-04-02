@@ -11,7 +11,6 @@ import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 import ProfilePage from "@/pages/ProfilePage";
 import CheckoutPage from "@/pages/CheckoutPage";
-import MobileDistributionPage from "@/pages/MobileDistributionPage";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -75,8 +74,6 @@ function Router() {
             </RequireAuth>
           )}
         </Route>
-
-        <Route path="/mobile-install" component={MobileDistributionPage} />
         
         <Route component={NotFound} />
       </Switch>
