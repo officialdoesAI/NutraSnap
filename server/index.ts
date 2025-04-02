@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { testDatabaseConnection } from "./lib/db";
+import { setupAuth } from "./auth";
 import 'dotenv/config';
 
 const app = express();
@@ -54,6 +55,9 @@ app.use((req, res, next) => {
     log(`Database connection error: ${errorMessage}`, 'db');
     process.exit(1);
   }
+  
+  // Set up authentication
+  setupAuth(app);
   
   const server = await registerRoutes(app);
 

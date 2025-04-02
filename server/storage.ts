@@ -4,7 +4,8 @@ import {
   mealRecords, type MealRecord, type InsertMealRecord
 } from "@shared/schema";
 import { db } from "./lib/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, isNull, and } from "drizzle-orm";
+import * as bcrypt from "bcryptjs";
 
 // Storage interface for CRUD operations
 export interface IStorage {
@@ -12,6 +13,8 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, updates: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | undefined>;
+  authenticateUser(username: string, password: string): Promise<User | undefined>;
   
   // Food item methods
   getFoodItem(id: number): Promise<FoodItem | undefined>;
@@ -20,6 +23,7 @@ export interface IStorage {
   // Meal record methods
   getMealRecord(id: number): Promise<MealRecord | undefined>;
   getAllMealRecords(): Promise<MealRecord[]>;
+  getMealRecordsByUserId(userId: number): Promise<MealRecord[]>;
   createMealRecord(mealRecord: InsertMealRecord): Promise<MealRecord>;
 }
 
@@ -37,8 +41,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const result = await db.insert(users).values(insertUser).returning();
+    // Remove confirmPassword as it's not stored in the database
+    const { confirmPassword, ...userToInsert } = insertUser as InsertUser & { confirmPassword: string };
+    
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(userToInsert.password, 10);
+    
+    // Create the user with hashed password
+    const result = await db.insert(users).values({
+      ...userToInsert,
+      password: hashedPassword,
+    }).returning();
+    
     return result[0];
+  }
+  
+  async updateUser(id: number, updates: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | undefined> {
+    // If password is being updated, hash it
+    if (updates.password) {
+      updates.password = await bcrypt.hash(updates.password, 10);
+    }
+    
+    const result = await db.update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+      
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async authenticateUser(username: string, password: string): Promise<User | undefined> {
+    const user = await this.getUserByUsername(username);
+    
+    if (!user) {
+      return undefined;
+    }
+    
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    
+    return isPasswordValid ? user : undefined;
   }
   
   // Food item methods
@@ -60,6 +101,13 @@ export class DatabaseStorage implements IStorage {
   
   async getAllMealRecords(): Promise<MealRecord[]> {
     return await db.select().from(mealRecords).orderBy(desc(mealRecords.timestamp));
+  }
+  
+  async getMealRecordsByUserId(userId: number): Promise<MealRecord[]> {
+    return await db.select()
+      .from(mealRecords)
+      .where(eq(mealRecords.userId, userId))
+      .orderBy(desc(mealRecords.timestamp));
   }
   
   async createMealRecord(insertMealRecord: InsertMealRecord): Promise<MealRecord> {
@@ -101,8 +149,41 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userId++;
-    const user: User = { ...insertUser, id };
+    const { confirmPassword, ...userToInsert } = insertUser as InsertUser & { confirmPassword: string };
+    
+    // Create a new user with default values for the new fields
+    const user: User = { 
+      ...userToInsert, 
+      id, 
+      profilePicture: null,
+      displayName: null,
+      createdAt: new Date(),
+    };
+    
     this.users.set(id, user);
+    return user;
+  }
+  
+  async updateUser(id: number, updates: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | undefined> {
+    const user = this.users.get(id);
+    
+    if (!user) {
+      return undefined;
+    }
+    
+    const updatedUser = { ...user, ...updates };
+    this.users.set(id, updatedUser);
+    
+    return updatedUser;
+  }
+  
+  async authenticateUser(username: string, password: string): Promise<User | undefined> {
+    const user = await this.getUserByUsername(username);
+    
+    if (!user || user.password !== password) {
+      return undefined;
+    }
+    
     return user;
   }
   
@@ -137,13 +218,25 @@ export class MemStorage implements IStorage {
     return Array.from(this.mealRecords.values())
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
+
+  async getMealRecordsByUserId(userId: number): Promise<MealRecord[]> {
+    return Array.from(this.mealRecords.values())
+      .filter(record => record.userId === userId)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
   
   async createMealRecord(insertMealRecord: InsertMealRecord): Promise<MealRecord> {
     const id = this.mealRecordId++;
     const timestamp = new Date();
+    
+    // Create a userId variable with the correct type
+    const userId: number | null = 
+      typeof insertMealRecord.userId === 'number' ? insertMealRecord.userId : null;
+    
     // Make sure all fields have proper values to satisfy the MealRecord type
     const mealRecord: MealRecord = { 
       id,
+      userId,
       name: insertMealRecord.name,
       imageData: insertMealRecord.imageData || null,
       totalCalories: insertMealRecord.totalCalories,
