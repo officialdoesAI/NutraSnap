@@ -4,13 +4,17 @@ import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import Camera from "@/components/Camera";
 import { Button } from "@/components/ui/button";
+import { Zap } from "lucide-react";
 import { analyzeFoodImage, saveMealRecord } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/context/AuthContext";
+import SubscriptionPaywall from "@/components/SubscriptionPaywall";
 
 const HomePage: React.FC = () => {
   const [imageData, setImageData] = useState<string | null>(null);
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { incrementScanCount, scanCount, showPaywall, setShowPaywall } = useAuth();
 
   const analysisMutation = useMutation({
     mutationFn: (imageData: string) => analyzeFoodImage(imageData),
@@ -53,6 +57,13 @@ const HomePage: React.FC = () => {
     setImageData(capturedImage);
   };
   
+  const handleSubscribe = () => {
+    // Navigate to subscription page
+    navigate("/profile");
+    // Close paywall modal
+    setShowPaywall(false);
+  };
+
   const handleAnalyze = () => {
     if (!imageData) {
       toast({
@@ -63,6 +74,16 @@ const HomePage: React.FC = () => {
       return;
     }
     
+    // Check scan limit (2 free scans)
+    if (scanCount >= 2) {
+      setShowPaywall(true);
+      return;
+    }
+    
+    // Increment scan count
+    incrementScanCount();
+    
+    // Proceed with analysis
     analysisMutation.mutate(imageData);
   };
   
@@ -90,7 +111,7 @@ const HomePage: React.FC = () => {
             </>
           ) : (
             <>
-              <i className="fas fa-bolt mr-2"></i>
+              <Zap className="mr-2 h-5 w-5" />
               Analyze Calories
             </>
           )}
@@ -125,6 +146,23 @@ const HomePage: React.FC = () => {
           >
             Cancel
           </button>
+        </div>
+      )}
+      
+      {/* Subscription Paywall */}
+      <SubscriptionPaywall 
+        isOpen={showPaywall} 
+        onClose={() => setShowPaywall(false)} 
+        onSubscribe={handleSubscribe} 
+      />
+      
+      {/* Free scan limit indicator */}
+      {scanCount < 2 && (
+        <div className="px-4 py-2 bg-gray-50 border-t">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-500">Free scans remaining</span>
+            <span className="font-medium">{2 - scanCount} / 2</span>
+          </div>
         </div>
       )}
     </div>
