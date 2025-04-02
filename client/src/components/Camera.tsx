@@ -1,13 +1,8 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
-import { Capacitor } from '@capacitor/core';
 import Webcam from "react-webcam";
-
-// Platform detection utility functions
-const isPlatform = (platform: string): boolean => {
-  return Capacitor.getPlatform() === platform;
-};
+import { isIOS, isNativePlatform } from "../lib/platform";
 
 interface CameraProps {
   onImageCapture: (imageData: string) => void;
@@ -22,7 +17,7 @@ const Camera: React.FC<CameraProps> = ({ onImageCapture }) => {
 
   // Check if running in native app context
   useEffect(() => {
-    setIsNative(isPlatform('ios') || isPlatform('android'));
+    setIsNative(isNativePlatform());
   }, []);
 
   // Native camera capture using Capacitor
