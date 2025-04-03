@@ -1,83 +1,83 @@
-# NutriLens: Guide for Codemagic Build with AltStore
+# NutriLens: Guide for Building Unsigned IPA with Codemagic
 
-This guide will help you successfully build your NutriLens app using Codemagic for installing via AltStore.
+This guide will help you build an unsigned IPA file for your NutriLens app using Codemagic, which you can then sign and install with AltStore.
 
-## Step 1: Get Your Apple Developer Team ID
-
-1. Go to [https://developer.apple.com/account/](https://developer.apple.com/account/)
-2. Log in with your Apple ID (you need at least the free developer account)
-3. Click "Membership" in the left sidebar
-4. Find your Team ID (a 10-character code like "A1B2C3D4E5")
-
-## Step 2: Set Up Environment Variables in Codemagic
+## Step 1: Set Up Your Build in Codemagic
 
 1. Log in to [Codemagic](https://codemagic.io)
-2. Go to your NutraSnap app
-3. Click "Environment variables" in the left menu
-4. Add the following variable:
+2. Go to your NutraSnap repository
+3. Click on "Start your first build" (or "Start new build" if you've already set up a workflow)
 
-| Variable Name | Value | Type |
-|--------------|-------------|------|
-| `XCODE_DEVELOPMENT_TEAM` | Your Apple Team ID from Step 1 | Secret |
+## Step 2: Configure the Build
 
-## Step 3: Configure Repository Settings
-
-1. In Codemagic, go to your app settings
-2. Select "Build triggers"
-3. Under "Workflow" select "altstore-build"
-4. Choose "main" for the branch
-5. Save settings
-
-## Step 4: Start the Build
-
-1. Click "Start new build"
-2. Select the "altstore-build" workflow
-3. Choose the "main" branch
+1. Select the "altstore-build" workflow
+2. Choose the "main" branch
+3. You can leave Environment Variables empty since we're skipping code signing
 4. Click "Start build"
 
-## Step 5: Install with AltStore
+## Step 3: Monitor the Build
 
-Once the build completes successfully:
+1. Wait for the build to complete (it will take a few minutes)
+2. The build goes through several steps:
+   - Installing dependencies
+   - Building the web app
+   - Setting up Capacitor
+   - Creating an unsigned IPA file
 
-1. Download the IPA file from the Artifacts section
-2. Send the IPA file to your iOS device (AirDrop, email, or cloud storage)
-3. Open AltStore on your device
-4. Go to "My Apps" tab
-5. Tap the "+" button in the top-left
-6. Select the downloaded IPA file
-7. Follow the prompts to install the app
+## Step 4: Get the Unsigned IPA
 
-## Troubleshooting Common Errors
+1. Once the build completes, go to the "Artifacts" tab
+2. Look for a file named "App.ipa" or similar
+3. Download this IPA file to your computer
 
-### Exit Code 65 (Code Signing Issue)
+## Step 5: Sign and Install with AltStore
 
-If you see "exited with status code 65" in the build logs:
+1. Make sure AltStore is installed on your iOS device
+2. Connect your iOS device to your computer
+3. Make sure AltServer is running on your computer
+4. Open AltStore on your device
+5. Go to "My Apps" tab
+6. Tap the "+" button in the top-left
+7. Select the downloaded IPA file
+8. AltStore will sign and install the app with your Apple ID
 
-1. Make sure your Apple Developer Team ID is correctly entered in the environment variables
-2. Check that you're using a valid Apple ID with at least a free developer account
-3. Try switching the export method from "development" to "ad-hoc" in the codemagic.yaml file
+## Troubleshooting
 
-### No Provisioning Profiles Found
+### IPA Not Generated
 
-If you see "no provisioning profiles found":
+If the IPA file isn't generated:
 
-1. The build is using automatic signing which should work with a free Apple Developer account
-2. Make sure you're using a real Apple ID (not a test account)
-3. The Apple ID must be added to a development team (even if it's just your personal team)
+1. Check the build logs for errors
+2. The workflow tries multiple fallback approaches if the primary method fails
+3. Look for specific Xcode errors in the logs
 
-### App Won't Install via AltStore
+### AltStore Can't Install the App
 
-If the app won't install through AltStore:
+If AltStore has trouble installing the app:
 
-1. Make sure AltStore is properly set up with your Apple ID
-2. Verify that AltServer is running on your computer
-3. Ensure your iOS device and computer are on the same Wi-Fi network
-4. Try refreshing AltStore before installing the app
+1. Make sure AltStore and AltServer are updated to the latest version
+2. Ensure AltServer is running and your devices are on the same network
+3. Try restarting AltServer
+4. Check that you have available app slots (free Apple ID allows up to 3 sideloaded apps)
 
-## Getting Additional Help
+### App Crashes on Launch
 
-If you continue to have issues:
+If the app installs but crashes when opened:
 
-1. Check the build logs in Codemagic for specific error messages
-2. Look for issues related to code signing or provisioning profiles
-3. Consider trying the direct PWA installation method as an alternative
+1. The app might require specific entitlements that are missing
+2. Try installing as a PWA instead:
+   - Open the web app in Safari on your iOS device
+   - Tap the Share button
+   - Select "Add to Home Screen"
+
+## Alternative: PWA Installation
+
+If you continue to have issues with AltStore installation, you can always use the PWA method:
+
+1. Open Safari on your iOS device
+2. Visit your deployed web app URL
+3. Tap the Share button
+4. Select "Add to Home Screen"
+5. The app will be installed as a PWA with most functionality intact
+
+While the PWA method doesn't provide 100% native features, it's a reliable fallback that works with any Apple ID.
