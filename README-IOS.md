@@ -1,85 +1,89 @@
-# NutriLens iOS App Build Guide
+# NutriLens iOS App Installation Guide
 
-This document provides instructions for building the NutriLens iOS app from the provided project files.
+This guide will help you install the NutriLens iOS app using AltStore on your iPhone or iPad.
 
 ## Prerequisites
 
-- A Mac computer with macOS Catalina (10.15) or later
-- Xcode 12 or later installed from the Mac App Store
-- An Apple Developer account (free or paid)
-- CocoaPods installed (`sudo gem install cocoapods`)
-- Node.js and npm installed
+1. AltStore installed on your iOS device
+   - [AltStore Installation Guide](https://altstore.io/)
+   - You will need a Mac or PC to install AltStore
 
-## Getting Started
+2. The NutriLens IPA file downloaded from Codemagic build
 
-1. Download and extract the `nutritlens-ios.zip` file to a folder on your Mac.
+## Installation Steps
 
-2. Open Terminal and navigate to the extracted folder:
-   ```
-   cd path/to/extracted/folder
-   ```
+### Option 1: Install via AltStore on your iOS device
 
-3. Install CocoaPods dependencies:
-   ```
-   cd ios/App
-   pod install
-   ```
-   If you encounter any issues with CocoaPods, try running:
-   ```
-   pod repo update
-   pod install --repo-update
-   ```
+1. **Transfer the IPA file to your iOS device**
+   - You can use AirDrop, iCloud Drive, or email to transfer the IPA file to your iOS device
 
-4. Open the Xcode workspace (not the project file):
-   ```
-   open App.xcworkspace
-   ```
+2. **Open AltStore on your iOS device**
+   - Go to the "My Apps" tab
+   - Tap the "+" button in the top left corner
+   - Select the NutriLens IPA file from your Files app
+   - Wait for the installation to complete
 
-## Configure the Project in Xcode
+3. **Trust the app**
+   - If necessary, go to Settings > General > Device Management
+   - Find the profile related to AltStore and trust it
 
-1. In Xcode, select the "App" project in the Project Navigator
-2. Select the "App" target in the left panel
-3. Go to the "Signing & Capabilities" tab
-4. Sign in with your Apple ID if you haven't already
-5. Select your personal team from the dropdown menu
-6. Ensure the Bundle Identifier is set to "io.nutritlens.app" (or change it to something unique)
+### Option 2: Build the app yourself using Xcode
 
-## Building for Your Device
+1. **Prerequisites**
+   - A Mac computer
+   - Xcode installed
+   - Apple Developer account (free or paid)
+   - iOS device (iPhone/iPad)
 
-### For Development Testing
+2. **Prepare the project**
+   - Extract the `nutritlens-ios.zip` file
+   - Open the `ios/App/App.xcworkspace` file in Xcode
 
-1. Connect your iOS device to your Mac with a USB cable
-2. In Xcode, select your iOS device from the target device dropdown at the top of the window
-3. Click the Play button to build and run the app on your device
-4. You may need to trust the developer certificate on your iOS device:
-   - On your iOS device, go to Settings > General > Device Management
-   - Select your Apple ID and tap "Trust"
+3. **Configure the app for your account**
+   - In Xcode, click on the "App" project in the Project Navigator
+   - Select the "App" target
+   - Go to the "Signing & Capabilities" tab
+   - Check "Automatically manage signing"
+   - Select your team (Apple ID)
 
-### For AltStore Distribution
+4. **Build and run**
+   - Connect your iOS device to your Mac
+   - Select your device from the device dropdown in Xcode
+   - Click the "Play" button to build and run
+   - Wait for the build process to complete and the app to install
 
-1. In Xcode, select "Any iOS Device" from the device dropdown
-2. From the menu, select Product > Archive
-3. When the archive is complete, click "Distribute App"
-4. Select "Development" distribution method
-5. Select "Export" and choose a location to save the .ipa file
-6. Install the .ipa file using AltStore on your iOS device:
-   - Make sure AltServer is running on your Mac
-   - Connect your iOS device to the same Wi-Fi network
-   - In AltStore on your device, go to "My Apps" tab
-   - Tap the "+" button and select your .ipa file
+## Troubleshooting White Screen Issues
 
-## Troubleshooting
+If you encounter a white screen when opening the app:
 
-- **Build Errors**: If you encounter build errors, make sure all required certificates and provisioning profiles are set up correctly.
-- **Camera Access**: Make sure camera permissions are properly configured in Info.plist.
-- **Network Errors**: If the app can't connect to the server, check the server URL configuration.
+1. **Check that you're using the latest build**
+   - Make sure you're using the most recent IPA file built with the latest code
 
-## Note About App Refresh
+2. **Force close and restart the app**
+   - Swipe up from the bottom of the screen (or double-click home button on older devices)
+   - Swipe the app up to close it
+   - Reopen the app
 
-When installed through AltStore:
-- With a free Apple Developer account: App needs to be refreshed every 7 days
-- With a paid Apple Developer account: App needs to be refreshed once a year
+3. **Check internet connectivity**
+   - The app requires an internet connection to function properly
+   - Ensure your device is connected to WiFi or has cellular data enabled
 
-## Questions and Support
+4. **Reset app permissions**
+   - Go to Settings > NutriLens
+   - Reset permissions and enable them again when prompted
 
-If you have any questions or need help building the app, please contact the development team for assistance.
+5. **Reinstall the app**
+   - Delete the app from your device
+   - Install it again following the steps above
+
+## Camera Usage
+
+The app requires camera permissions to analyze food. When prompted, please allow camera access for the full functionality of the app.
+
+## Support
+
+If you encounter any issues, please contact support at ofclshorts@gmail.com with:
+- Your iOS device model
+- iOS version
+- A screenshot of the issue (if possible)
+- Steps to reproduce the problem
