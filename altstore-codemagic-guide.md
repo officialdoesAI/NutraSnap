@@ -1,83 +1,79 @@
-# NutriLens: Guide for Building Unsigned IPA with Codemagic
+# NutriLens: Guide for Building & Installing with AltStore
 
-This guide will help you build an unsigned IPA file for your NutriLens app using Codemagic, which you can then sign and install with AltStore.
+This guide will help you build, download, and install the NutriLens app using Codemagic and AltStore.
 
-## Step 1: Set Up Your Build in Codemagic
+## Step 1: Start the Build in Codemagic
 
 1. Log in to [Codemagic](https://codemagic.io)
 2. Go to your NutraSnap repository
-3. Click on "Start your first build" (or "Start new build" if you've already set up a workflow)
+3. Click on "Start new build"
+4. Select the "altstore-build" workflow
+5. Choose the "main" branch
+6. Click "Start build"
 
-## Step 2: Configure the Build
+## Step 2: Get the IPA File (3 Easy Options)
 
-1. Select the "altstore-build" workflow
-2. Choose the "main" branch
-3. You can leave Environment Variables empty since we're skipping code signing
-4. Click "Start build"
+After the build completes, you have multiple ways to download the IPA file:
 
-## Step 3: Monitor the Build
+### Option 1: Download Link File (Easiest)
+1. In the build artifacts, find and download the `download-link.txt` file
+2. Open this text file to find a direct download URL to the IPA
+3. The URL is valid for 14 days and can be opened on any device
 
-1. Wait for the build to complete (it will take a few minutes)
-2. The build goes through several steps:
-   - Installing dependencies
-   - Building the web app
-   - Setting up Capacitor
-   - Creating an unsigned IPA file
+### Option 2: HTML Download Page
+1. In the build artifacts, download the `AltStore-Package/index.html` file
+2. Open this HTML file in any browser
+3. Click the download button to get the IPA file
 
-## Step 4: Get the Unsigned IPA
+### Option 3: Direct Download from Artifacts
+1. Go to the "Artifacts" tab after the build completes
+2. Look for `NutriLens.ipa` in the list
+3. Download this file directly to your computer
 
-1. Once the build completes, go to the "Artifacts" tab
-2. Look for a file named "App.ipa" or similar
-3. Download this IPA file to your computer
+## Step 3: Install Using AltStore
 
-## Step 5: Sign and Install with AltStore
+### Preparation
+1. Make sure you have [AltStore](https://altstore.io/) installed on your iOS device
+2. Ensure AltServer is running on your computer
+3. Connect your iPhone to the same WiFi network as your computer
 
-1. Make sure AltStore is installed on your iOS device
-2. Connect your iOS device to your computer
-3. Make sure AltServer is running on your computer
-4. Open AltStore on your device
-5. Go to "My Apps" tab
-6. Tap the "+" button in the top-left
-7. Select the downloaded IPA file
-8. AltStore will sign and install the app with your Apple ID
+### Installation Steps
+1. Transfer the IPA to your computer (if you downloaded on another device)
+2. Open AltStore on your iOS device
+3. Go to the "My Apps" tab
+4. Tap the "+" button in the top-left corner
+5. Navigate to and select the NutriLens.ipa file
+6. Wait while AltStore signs and installs the app
+7. Once installed, you can open NutriLens from your home screen
 
 ## Troubleshooting
 
-### IPA Not Generated
+### "Cannot Download IPA" Issues
+If you're having trouble downloading the IPA file directly on your iOS device:
+1. Use the `download-link.txt` method and open the link on your computer
+2. Download the IPA file to your computer first, then use AltStore to install
 
-If the IPA file isn't generated:
-
-1. Check the build logs for errors
-2. The workflow tries multiple fallback approaches if the primary method fails
-3. Look for specific Xcode errors in the logs
-
-### AltStore Can't Install the App
-
+### AltStore Installation Problems
 If AltStore has trouble installing the app:
-
-1. Make sure AltStore and AltServer are updated to the latest version
-2. Ensure AltServer is running and your devices are on the same network
-3. Try restarting AltServer
+1. Make sure AltServer is running and visible in your computer's taskbar/menu bar
+2. Ensure your device and computer are on the same WiFi network
+3. Restart AltServer and try again
 4. Check that you have available app slots (free Apple ID allows up to 3 sideloaded apps)
 
 ### App Crashes on Launch
-
 If the app installs but crashes when opened:
-
-1. The app might require specific entitlements that are missing
+1. Make sure you're using AltStore to install (direct installation without signing won't work)
 2. Try installing as a PWA instead:
-   - Open the web app in Safari on your iOS device
+   - Open the web version of NutriLens in Safari
    - Tap the Share button
    - Select "Add to Home Screen"
 
 ## Alternative: PWA Installation
-
 If you continue to have issues with AltStore installation, you can always use the PWA method:
-
 1. Open Safari on your iOS device
-2. Visit your deployed web app URL
+2. Visit the NutriLens web app URL
 3. Tap the Share button
 4. Select "Add to Home Screen"
 5. The app will be installed as a PWA with most functionality intact
 
-While the PWA method doesn't provide 100% native features, it's a reliable fallback that works with any Apple ID.
+While the PWA method doesn't provide 100% of the native features (like background camera access), it's a reliable option that works with any Apple ID and doesn't require computer connection.
