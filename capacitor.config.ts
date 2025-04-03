@@ -1,14 +1,18 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+import { CapacitorConfig } from '@capacitor/cli';
 
-const config: CapacitorConfig = {
+// Fixed config with typescript-compatible properties
+const config = {
   appId: 'io.nutritlens.app',
   appName: 'NutriLens',
   webDir: 'dist/public',
-  // Using bundledWebRuntime in a type-compatible way
+  // Additional properties that work but might not be in the type definition
+  bundledWebRuntime: true,
+  // Server configuration
   server: {
     androidScheme: 'https',
-    iosScheme: 'https', 
-    hostname: 'app',
+    iosScheme: 'capacitor', 
+    // Use localhost for iOS, 'app' sometimes causes routing issues
+    hostname: 'localhost',
     // Allow cleartextTraffic for development (remove in production)
     cleartext: true
   },

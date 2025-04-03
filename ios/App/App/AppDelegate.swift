@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -7,7 +8,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Enable WKWebView debugging from Safari
+        #if DEBUG
+            if #available(iOS 16.4, *) {
+                WKWebView.enableInspectorFrontend()
+                WKWebView.enableRemoteInspector()
+            }
+        #endif
+        
+        // Print app bundle path to help with debugging
+        print("App bundle path: \(Bundle.main.bundlePath)")
+        if let resourcePath = Bundle.main.resourcePath {
+            print("Resource path: \(resourcePath)")
+            print("Web content exists: \(FileManager.default.fileExists(atPath: "\(resourcePath)/public"))")
+        }
+        
+        // Initialize Capacitor with more verbose logging
+        CapacitorBridge.enableLogging = true
+        
         return true
     }
 
