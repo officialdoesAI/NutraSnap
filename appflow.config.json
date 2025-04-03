@@ -1,0 +1,29 @@
+{
+  "apps": [
+    {
+      "appId": "io.nutritlens.app",
+      "root": ".",
+      "webDir": "client/dist",
+      "ios": {
+        "scheme": "App",
+        "buildFlag": [
+          "-allowProvisioningUpdates"
+        ]
+      },
+      "android": {
+        "packageName": "io.nutritlens.app"
+      },
+      "capacitor": {
+        "hideLogs": false
+      }
+    }
+  ],
+  "hooks": {
+    "build": {
+      "command": "npm run build"
+    }
+  },
+  "dependencyInstall": {
+    "command": "npm ci"
+  }
+}
