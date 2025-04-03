@@ -17,111 +17,65 @@ workflows:
         script: npm run build
       
       - name: Setup Capacitor
-        script: |
-          npx cap add ios || true
-          npx cap sync ios
+        script: npx cap add ios || true && npx cap sync ios
       
-      - name: Install Codemagic CLI tools
-        script: pip3 install codemagic-cli-tools
-      
-      - name: Create unsigned IPA
+      - name: Create Export Options
         script: |
           cd ios/App
-          # Create export options plist
-          echo '<?xml version="1.0" encoding="UTF-8"?>
+          cat > exportOptions.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0"><dict>
             <key>method</key><string>development</string>
             <key>compileBitcode</key><false/>
             <key>signingStyle</key><string>manual</string>
-          </dict></plist>' > exportOptions.plist
-          
-          # Build without signing
-          xcode-project build-ipa \
-            --workspace App.xcworkspace \
-            --scheme App \
-            --config Debug \
-            --no-codesign \
-            --output-path $CM_BUILD_DIR/build/ios/App.ipa
+          </dict></plist>
+          EOF
       
-      - name: Fallback - Build Archive
+      - name: Build IPA without signing
+        script: |
+          cd ios/App
+          xcode-project build-ipa --workspace App.xcworkspace --scheme App --config Debug --no-codesign --output-path $CM_BUILD_DIR/build/ios/App.ipa
+      
+      - name: Fallback build method
         script: |
           if [ ! -f "$CM_BUILD_DIR/build/ios/App.ipa" ]; then
             cd ios/App
-            xcodebuild \
-              -workspace App.xcworkspace \
-              -scheme App \
-              -configuration Debug \
-              -archivePath $CM_BUILD_DIR/build/App.xcarchive \
-              archive \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO
+            xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -archivePath $CM_BUILD_DIR/build/App.xcarchive archive CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
             
-            # Export the archive
-            xcodebuild \
-              -exportArchive \
-              -archivePath $CM_BUILD_DIR/build/App.xcarchive \
-              -exportPath $CM_BUILD_DIR/build/ios \
-              -exportOptionsPlist exportOptions.plist || true
+            xcodebuild -exportArchive -archivePath $CM_BUILD_DIR/build/App.xcarchive -exportPath $CM_BUILD_DIR/build/ios -exportOptionsPlist exportOptions.plist || true
           fi
       
-      - name: Manual IPA packaging
+      - name: Manual packaging
         script: |
-          if [ ! -f "$CM_BUILD_DIR/build/ios/App.ipa" ]; then
-            if [ -d "$CM_BUILD_DIR/build/App.xcarchive/Products/Applications/App.app" ]; then
-              mkdir -p $CM_BUILD_DIR/build/ios/Payload
-              cp -r $CM_BUILD_DIR/build/App.xcarchive/Products/Applications/App.app $CM_BUILD_DIR/build/ios/Payload/
-              cd $CM_BUILD_DIR/build/ios
-              zip -r App.ipa Payload
-            fi
+          if [ ! -f "$CM_BUILD_DIR/build/ios/App.ipa" ] && [ -d "$CM_BUILD_DIR/build/App.xcarchive/Products/Applications/App.app" ]; then
+            mkdir -p $CM_BUILD_DIR/build/ios/Payload
+            cp -r $CM_BUILD_DIR/build/App.xcarchive/Products/Applications/App.app $CM_BUILD_DIR/build/ios/Payload/
+            cd $CM_BUILD_DIR/build/ios && zip -r App.ipa Payload
           fi
       
-      - name: Prepare downloadable files
+      - name: Prepare files for download
         script: |
-          # Copy IPA with a better name
           if [ -f "$CM_BUILD_DIR/build/ios/App.ipa" ]; then
             cp $CM_BUILD_DIR/build/ios/App.ipa $CM_BUILD_DIR/NutriLens.ipa
-            
-            # Create instructions text file
-            echo "NutriLens IPA Installation:
-            
-1. Download the NutriLens.ipa file
-2. Transfer it to your computer
-3. Use AltStore to install the app on your iOS device
-            
-Alternative:
-- Open the web version in Safari
-- Add to Home Screen to install as PWA" > $CM_BUILD_DIR/install-instructions.txt
-            
-            # Create a simple HTML download page
-            echo '<!DOCTYPE html><html>
-<head><title>NutriLens IPA Download</title></head>
-<body style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:20px;text-align:center">
-<h1>NutriLens App</h1>
-<p><a href="NutriLens.ipa" style="display:inline-block;background:#007aff;color:white;padding:12px 30px;border-radius:10px;text-decoration:none" download>Download IPA</a></p>
-<div style="text-align:left;background:#f7f7f7;padding:20px;border-radius:10px;margin-top:20px">
-<h2>Installation:</h2>
-<ol><li>Download to computer</li><li>Use AltStore to install</li></ol>
-</div></body></html>' > $CM_BUILD_DIR/download.html
+            echo "How to install NutriLens IPA with AltStore:" > $CM_BUILD_DIR/instructions.txt
+            echo "1. Download the IPA file to your computer" >> $CM_BUILD_DIR/instructions.txt
+            echo "2. Open AltStore on your iOS device" >> $CM_BUILD_DIR/instructions.txt
+            echo "3. In AltStore, go to My Apps tab and tap + button" >> $CM_BUILD_DIR/instructions.txt
+            echo "4. Select the downloaded IPA file" >> $CM_BUILD_DIR/instructions.txt
           fi
       
-      - name: Create easy file sharing links
+      - name: Create download link
         script: |
           if [ -f "$CM_BUILD_DIR/NutriLens.ipa" ]; then
-            # Try using file.io service
-            curl -s -F "file=@$CM_BUILD_DIR/NutriLens.ipa" https://file.io > /tmp/file-io-response.txt
-            if grep -q "key" /tmp/file-io-response.txt; then
-              DOWNLOAD_URL=$(grep -o 'https://file.io/[A-Za-z0-9]*' /tmp/file-io-response.txt || echo "Upload failed")
-              echo "Download link: $DOWNLOAD_URL" > $CM_BUILD_DIR/download-link.txt
-            else
-              echo "File upload failed. Use the IPA directly from artifacts." > $CM_BUILD_DIR/download-link.txt
-            fi
+            # Create a safe file sharing link
+            echo "Download links will be available in the build artifacts" > $CM_BUILD_DIR/download-info.txt
+            # Attempt to get a direct link but don't rely on it working
+            curl -s -F "file=@$CM_BUILD_DIR/NutriLens.ipa" https://file.io | grep -o 'https://file.io/[A-Za-z0-9]*' >> $CM_BUILD_DIR/download-info.txt || true
           fi
     
     artifacts:
       - $CM_BUILD_DIR/NutriLens.ipa
-      - $CM_BUILD_DIR/download.html
-      - $CM_BUILD_DIR/install-instructions.txt
-      - $CM_BUILD_DIR/download-link.txt
+      - $CM_BUILD_DIR/instructions.txt
+      - $CM_BUILD_DIR/download-info.txt
       - $CM_BUILD_DIR/build/ios/*.ipa
