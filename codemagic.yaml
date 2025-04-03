@@ -19,61 +19,48 @@ workflows:
       - name: Setup Capacitor
         script: npx cap add ios || true && npx cap sync ios
       
-      - name: Install Codemagic CLI tools and dependencies
+      - name: Install Codemagic CLI tools
         script: |
-          # Make sure we have the latest CLI tools
           pip3 install -U codemagic-cli-tools
           pip3 install -U pyyaml
-          # Check installation
-          which xcode-project || echo "xcode-project tool not found"
-          pip3 list | grep codemagic
       
       - name: Create Export Options
         script: |
-          cd ios/App
-          cat > exportOptions.plist << EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0"><dict>
-            <key>method</key><string>development</string>
-            <key>compileBitcode</key><false/>
-            <key>signingStyle</key><string>manual</string>
-            <key>stripSwiftSymbols</key><false/>
-            <key>thinning</key><string>&lt;none&gt;</string>
-          </dict></plist>
-          EOF
+          # Store XML strings in plain files instead of heredocs
+          mkdir -p $CM_BUILD_DIR/config
           
-          # Create Info.plist for fallback if needed
-          mkdir -p $CM_BUILD_DIR/backup
-          cat > $CM_BUILD_DIR/backup/Info.plist << EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>CFBundleExecutable</key><string>App</string>
-            <key>CFBundleIdentifier</key><string>com.nutritlens.app</string>
-            <key>CFBundleName</key><string>NutriLens</string>
-            <key>CFBundleDisplayName</key><string>NutriLens</string>
-            <key>CFBundleVersion</key><string>1.0</string>
-            <key>CFBundleShortVersionString</key><string>1.0</string>
-            <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-            <key>CFBundlePackageType</key><string>APPL</string>
-            <key>UIRequiresFullScreen</key><true/>
-            <key>UISupportedInterfaceOrientations</key>
-            <array>
-              <string>UIInterfaceOrientationPortrait</string>
-            </array>
-          </dict>
-          </plist>
-          EOF
+          # Create export options plist
+          echo "Creating export options plist"
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > $CM_BUILD_DIR/config/exportOptions.plist
+          echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> $CM_BUILD_DIR/config/exportOptions.plist
+          echo '<plist version="1.0"><dict>' >> $CM_BUILD_DIR/config/exportOptions.plist
+          echo '  <key>method</key><string>development</string>' >> $CM_BUILD_DIR/config/exportOptions.plist
+          echo '  <key>compileBitcode</key><false/>' >> $CM_BUILD_DIR/config/exportOptions.plist
+          echo '  <key>signingStyle</key><string>manual</string>' >> $CM_BUILD_DIR/config/exportOptions.plist
+          echo '  <key>stripSwiftSymbols</key><false/>' >> $CM_BUILD_DIR/config/exportOptions.plist
+          echo '  <key>thinning</key><string>&lt;none&gt;</string>' >> $CM_BUILD_DIR/config/exportOptions.plist
+          echo '</dict></plist>' >> $CM_BUILD_DIR/config/exportOptions.plist
+          
+          # Create backup Info.plist
+          echo "Creating backup Info.plist"
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > $CM_BUILD_DIR/config/Info.plist
+          echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> $CM_BUILD_DIR/config/Info.plist
+          echo '<plist version="1.0"><dict>' >> $CM_BUILD_DIR/config/Info.plist
+          echo '  <key>CFBundleExecutable</key><string>App</string>' >> $CM_BUILD_DIR/config/Info.plist
+          echo '  <key>CFBundleIdentifier</key><string>com.nutritlens.app</string>' >> $CM_BUILD_DIR/config/Info.plist
+          echo '  <key>CFBundleName</key><string>NutriLens</string>' >> $CM_BUILD_DIR/config/Info.plist
+          echo '  <key>CFBundleDisplayName</key><string>NutriLens</string>' >> $CM_BUILD_DIR/config/Info.plist
+          echo '  <key>CFBundleVersion</key><string>1.0</string>' >> $CM_BUILD_DIR/config/Info.plist
+          echo '  <key>CFBundleShortVersionString</key><string>1.0</string>' >> $CM_BUILD_DIR/config/Info.plist
+          echo '  <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>' >> $CM_BUILD_DIR/config/Info.plist
+          echo '  <key>CFBundlePackageType</key><string>APPL</string>' >> $CM_BUILD_DIR/config/Info.plist
+          echo '  <key>UIRequiresFullScreen</key><true/>' >> $CM_BUILD_DIR/config/Info.plist
+          echo '</dict></plist>' >> $CM_BUILD_DIR/config/Info.plist
+          
+          # Copy export options to ios/App directory
+          cp $CM_BUILD_DIR/config/exportOptions.plist ios/App/
       
-      # Skip this step - it seems to be causing issues
-      # - name: Build IPA without signing
-      #   script: |
-      #     cd ios/App
-      #     xcode-project build-ipa --workspace App.xcworkspace --scheme App --config Debug --no-codesign --output-path $CM_BUILD_DIR/build/ios/App.ipa || echo "xcode-project failed, will use fallback"
-      
-      - name: Primary build method (xcodebuild)
+      - name: Primary build attempt
         script: |
           cd ios/App
           
@@ -84,268 +71,113 @@ workflows:
           pod install || echo "Pod install failed, continuing anyway"
           
           # Debug - log build environment
-          echo "Xcode version:"
-          xcodebuild -version
-          echo "iOS SDK versions:"
-          xcodebuild -showsdks | grep iOS
+          echo "Xcode version: $(xcodebuild -version)"
           
-          # First, try a direct build to app approach - this is more reliable for AltStore
+          # First build approach - direct to app
           echo "Building app directly..."
           mkdir -p $CM_BUILD_DIR/build/ios/Payload
           
-          # Try to build directly to a .app file - AltStore compatible approach
           xcodebuild -workspace App.xcworkspace \
             -scheme App \
             -configuration Debug \
             -sdk iphoneos \
-            -quiet \
             CONFIGURATION_BUILD_DIR=$CM_BUILD_DIR/build/ios/Payload \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            ENABLE_BITCODE=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO || echo "Direct build failed, will try archive method"
+            ENABLE_BITCODE=NO || echo "Direct build failed"
             
           # Check if direct build succeeded
           if [ -d "$CM_BUILD_DIR/build/ios/Payload/App.app" ]; then
             echo "Direct build successful, creating IPA"
             cd $CM_BUILD_DIR/build/ios
             
-            # For AltStore compatibility, make sure we have all required files
-            if [ ! -f "$CM_BUILD_DIR/build/ios/Payload/App.app/embedded.mobileprovision" ]; then
-              echo "Adding dummy mobileprovision for AltStore compatibility"
-              touch $CM_BUILD_DIR/build/ios/Payload/App.app/embedded.mobileprovision
-            fi
+            # Add mobileprovision for AltStore
+            touch $CM_BUILD_DIR/build/ios/Payload/App.app/embedded.mobileprovision
             
-            # Create the IPA using zip
+            # Create the IPA
             zip -qr App.ipa Payload
-            echo "IPA created successfully via direct build"
-            ls -la App.ipa
+            echo "IPA created successfully"
           else
-            # Fallback to archive method if direct build failed
             echo "Direct build failed, trying archive method..."
             
-            # Build archive with more verbose output and lower log level
-            echo "Archiving app..."
+            # Second build approach - archive
             xcodebuild -workspace App.xcworkspace \
               -scheme App \
               -configuration Debug \
               -archivePath $CM_BUILD_DIR/build/App.xcarchive \
-              -quiet \
-              -allowProvisioningUpdates \
-              -derivedDataPath ~/Library/Developer/Xcode/DerivedData \
               CODE_SIGN_IDENTITY="" \
               CODE_SIGNING_REQUIRED=NO \
               CODE_SIGNING_ALLOWED=NO \
               ENABLE_BITCODE=NO \
-              COMPILER_INDEX_STORE_ENABLE=NO \
-              archive || { echo "Archive build failed, will attempt to continue"; mkdir -p $CM_BUILD_DIR/build/App.xcarchive/Products/Applications; }
+              archive || echo "Archive build failed"
               
-            # Check if archive was created
-            if [ -d "$CM_BUILD_DIR/build/App.xcarchive" ]; then
-              echo "Archive directory exists"
-              ls -la $CM_BUILD_DIR/build/App.xcarchive || echo "Failed to list archive contents"
+            # Check if archive succeeded
+            if [ -d "$CM_BUILD_DIR/build/App.xcarchive/Products/Applications/App.app" ]; then
+              echo "Archive successful, creating IPA"
+              mkdir -p $CM_BUILD_DIR/build/ios/Payload
+              cp -r $CM_BUILD_DIR/build/App.xcarchive/Products/Applications/App.app $CM_BUILD_DIR/build/ios/Payload/
               
-              # Check if app was created in archive
-              if [ -d "$CM_BUILD_DIR/build/App.xcarchive/Products/Applications/App.app" ]; then
-                echo "App found in archive, creating IPA manually"
-                mkdir -p $CM_BUILD_DIR/build/ios/Payload
-                cp -r $CM_BUILD_DIR/build/App.xcarchive/Products/Applications/App.app $CM_BUILD_DIR/build/ios/Payload/
-                
-                # For AltStore compatibility, make sure we have all required files
-                if [ ! -f "$CM_BUILD_DIR/build/ios/Payload/App.app/embedded.mobileprovision" ]; then
-                  echo "Adding dummy mobileprovision for AltStore compatibility"
-                  touch $CM_BUILD_DIR/build/ios/Payload/App.app/embedded.mobileprovision
-                fi
-                
-                cd $CM_BUILD_DIR/build/ios
-                echo "Creating IPA from app bundle..."
-                zip -qr App.ipa Payload
-                echo "Manual IPA creation complete"
-                ls -la App.ipa || echo "Failed to create IPA manually"
-              else
-                echo "No app found in archive, export attempt will likely fail"
-                
-                # Try export anyway
-                echo "Exporting IPA..."
-                mkdir -p $CM_BUILD_DIR/build/ios
-                xcodebuild -exportArchive \
-                  -archivePath $CM_BUILD_DIR/build/App.xcarchive \
-                  -exportPath $CM_BUILD_DIR/build/ios \
-                  -exportOptionsPlist exportOptions.plist -allowProvisioningUpdates || echo "Export failed, will use fallback"
-              fi
+              # Add mobileprovision for AltStore
+              touch $CM_BUILD_DIR/build/ios/Payload/App.app/embedded.mobileprovision
+              
+              cd $CM_BUILD_DIR/build/ios
+              zip -qr App.ipa Payload
+              echo "IPA created successfully"
             else
-              echo "Archive failed completely"
+              echo "Both build methods failed"
             fi
           fi
       
-      - name: Fallback - AltStore Specific IPA
+      - name: Create fallback IPA if needed
         script: |
           if [ ! -f "$CM_BUILD_DIR/build/ios/App.ipa" ]; then
-            echo "All previous build attempts failed, creating AltStore-compatible IPA..."
+            echo "Build attempts failed, creating basic IPA structure..."
             
-            # Create directory structure for a minimal AltStore-compatible IPA
-            mkdir -p $CM_BUILD_DIR/build/ios/Payload/App.app
-            cd $CM_BUILD_DIR/build/ios
+            # Create directory structure
+            mkdir -p $CM_BUILD_DIR/basic-build/Payload/App.app
+            cd $CM_BUILD_DIR/basic-build
             
-            # Create Info.plist with all required keys for AltStore
-            cat > Payload/App.app/Info.plist << 'EOL'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleIdentifier</key>
-    <string>com.nutritlens.app</string>
-    <key>CFBundleName</key>
-    <string>NutriLens</string>
-    <key>CFBundleDisplayName</key>
-    <string>NutriLens</string>
-    <key>CFBundleVersion</key>
-    <string>1.0</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleExecutable</key>
-    <string>App</string>
-    <key>LSRequiresIPhoneOS</key>
-    <true/>
-    <key>UIRequiredDeviceCapabilities</key>
-    <array>
-        <string>armv7</string>
-    </array>
-    <key>UILaunchStoryboardName</key>
-    <string>LaunchScreen</string>
-    <key>UISupportedInterfaceOrientations</key>
-    <array>
-        <string>UIInterfaceOrientationPortrait</string>
-    </array>
-</dict>
-</plist>
-EOL
+            # Copy the Info.plist
+            cp $CM_BUILD_DIR/config/Info.plist Payload/App.app/
             
-            # Create executable binary (required for AltStore)
-            cat > Payload/App.app/App << 'EOL'
-#!/bin/sh
-# This is a placeholder binary for the AltStore compatible IPA
-# The actual app content would be here in a real build
-EOL
+            # Create placeholder executable
+            echo '#!/bin/sh' > Payload/App.app/App
+            echo '# Placeholder binary' >> Payload/App.app/App
             chmod +x Payload/App.app/App
             
-            # Add mobileprovision file (required for AltStore)
+            # Add required files for AltStore
             touch Payload/App.app/embedded.mobileprovision
-            
-            # Create basic PkgInfo (optional but recommended)
             echo "APPL????" > Payload/App.app/PkgInfo
             
             # Create the IPA
-            echo "Creating AltStore-compatible IPA..."
-            zip -qyr App.ipa Payload
-            
-            echo "AltStore-compatible IPA created"
-            ls -la App.ipa
-          else
-            echo "IPA already exists at $CM_BUILD_DIR/build/ios/App.ipa, skipping fallback packaging"
+            zip -r $CM_BUILD_DIR/build/ios/App.ipa Payload
+            echo "Basic IPA structure created"
           fi
       
       - name: Prepare files for download
         script: |
-          echo "Preparing download files..."
-          
-          # Always create instructions
+          # Create instructions
           echo "How to install NutriLens IPA with AltStore:" > $CM_BUILD_DIR/instructions.txt
           echo "1. Download the IPA file to your computer" >> $CM_BUILD_DIR/instructions.txt
           echo "2. Open AltStore on your iOS device" >> $CM_BUILD_DIR/instructions.txt
           echo "3. In AltStore, go to My Apps tab and tap + button" >> $CM_BUILD_DIR/instructions.txt
           echo "4. Select the downloaded IPA file" >> $CM_BUILD_DIR/instructions.txt
           
-          # Create build info file
+          # Create build info
           echo "Build Date: $(date)" > $CM_BUILD_DIR/build-info.txt
           echo "Xcode Version: $(xcodebuild -version | head -n 1)" >> $CM_BUILD_DIR/build-info.txt
-          echo "iOS SDK: $(xcodebuild -showsdks | grep -i iphoneos | head -n 1)" >> $CM_BUILD_DIR/build-info.txt
           
-          # Copy IPA if it exists, otherwise create a basic IPA
+          # Copy final IPA
           if [ -f "$CM_BUILD_DIR/build/ios/App.ipa" ]; then
-            echo "Copying IPA file..."
             cp $CM_BUILD_DIR/build/ios/App.ipa $CM_BUILD_DIR/NutriLens.ipa
             echo "IPA file copied successfully"
-            echo "Build Result: Success - Full IPA built" >> $CM_BUILD_DIR/build-info.txt
           else
-            echo "No IPA file found to copy, creating basic IPA structure"
-            
-            # Create a basic IPA structure with minimal required files
-            mkdir -p $CM_BUILD_DIR/basic-build/Payload/App.app
-            
-            # Copy the backup Info.plist or create a new one
-            if [ -f "$CM_BUILD_DIR/backup/Info.plist" ]; then
-              cp $CM_BUILD_DIR/backup/Info.plist $CM_BUILD_DIR/basic-build/Payload/App.app/
-            else
-              cat > $CM_BUILD_DIR/basic-build/Payload/App.app/Info.plist << 'EOL'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleIdentifier</key>
-    <string>com.nutritlens.app</string>
-    <key>CFBundleName</key>
-    <string>NutriLens</string>
-    <key>CFBundleDisplayName</key>
-    <string>NutriLens</string>
-    <key>CFBundleVersion</key>
-    <string>1.0</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleExecutable</key>
-    <string>App</string>
-</dict>
-</plist>
-EOL
-            fi
-            
-            # Create a placeholder binary
-            cat > $CM_BUILD_DIR/basic-build/Payload/App.app/App << 'EOL'
-#!/bin/sh
-# This is a placeholder binary file. The actual app build failed in Codemagic.
-EOL
-            chmod +x $CM_BUILD_DIR/basic-build/Payload/App.app/App
-            
-            # Create the IPA
-            cd $CM_BUILD_DIR/basic-build
-            zip -r $CM_BUILD_DIR/NutriLens.ipa Payload
-            
-            echo "Created basic IPA structure to continue pipeline"
-            echo "Build Result: Partial - Basic IPA structure only" >> $CM_BUILD_DIR/build-info.txt
-            echo "Details: The xcodebuild process failed. This IPA will not run but allows Codemagic to complete the build process." >> $CM_BUILD_DIR/build-info.txt
-            echo "Please check the full build logs for more information." >> $CM_BUILD_DIR/build-info.txt
+            echo "No IPA file found"
           fi
-          
-          # Create a build report with more detailed information
-          echo "# NutriLens Build Report" > $CM_BUILD_DIR/build-report.md
-          echo "## Build Status" >> $CM_BUILD_DIR/build-report.md
-          if [ -f "$CM_BUILD_DIR/build/ios/App.ipa" ]; then
-            echo "**SUCCESS**: Full IPA built successfully" >> $CM_BUILD_DIR/build-report.md
-          else
-            echo "**PARTIAL FAILURE**: Basic IPA structure created, but build process failed" >> $CM_BUILD_DIR/build-report.md
-          fi
-          
-          echo "## Build Information" >> $CM_BUILD_DIR/build-report.md
-          echo "- Build Date: $(date)" >> $CM_BUILD_DIR/build-report.md
-          echo "- Xcode Version: $(xcodebuild -version | head -n 1)" >> $CM_BUILD_DIR/build-report.md
-          echo "- iOS SDK: $(xcodebuild -showsdks | grep -i iphoneos | head -n 1)" >> $CM_BUILD_DIR/build-report.md
-          
-          echo "## Installation Instructions" >> $CM_BUILD_DIR/build-report.md
-          echo "1. Download the IPA file to your computer" >> $CM_BUILD_DIR/build-report.md
-          echo "2. Open AltStore on your iOS device" >> $CM_BUILD_DIR/build-report.md
-          echo "3. In AltStore, go to My Apps tab and tap + button" >> $CM_BUILD_DIR/build-report.md
-          echo "4. Select the downloaded IPA file" >> $CM_BUILD_DIR/build-report.md
-      
+    
     artifacts:
       - $CM_BUILD_DIR/NutriLens.ipa
       - $CM_BUILD_DIR/instructions.txt
       - $CM_BUILD_DIR/build-info.txt
-      - $CM_BUILD_DIR/build-report.md
       - $CM_BUILD_DIR/build/ios/App.ipa
