@@ -127,80 +127,80 @@ workflows:
             mkdir -p $CM_BUILD_DIR/AltStore-Package
             cp $CM_BUILD_DIR/build/ios/App.ipa $CM_BUILD_DIR/AltStore-Package/NutriLens.ipa
             
-            # Create a simple HTML page for direct download
-            cat > $CM_BUILD_DIR/AltStore-Package/index.html << EOL
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>NutriLens IPA Download</title>
-                <style>
-                    body {
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                        max-width: 500px;
-                        margin: 0 auto;
-                        padding: 20px;
-                        text-align: center;
-                    }
-                    h1 {
-                        color: #333;
-                    }
-                    .download-btn {
-                        display: inline-block;
-                        background-color: #007aff;
-                        color: white;
-                        padding: 12px 30px;
-                        border-radius: 10px;
-                        text-decoration: none;
-                        font-weight: bold;
-                        margin: 20px 0;
-                    }
-                    .instructions {
-                        text-align: left;
-                        background-color: #f7f7f7;
-                        padding: 20px;
-                        border-radius: 10px;
-                        margin-top: 20px;
-                    }
-                    .instructions li {
-                        margin-bottom: 10px;
-                    }
-                </style>
-            </head>
-            <body>
-                <h1>NutriLens App</h1>
-                <p>Click the button below to download the unsigned IPA file:</p>
-                <a href="NutriLens.ipa" class="download-btn" download>Download NutriLens IPA</a>
-                
-                <div class="instructions">
-                    <h2>Installation Instructions:</h2>
-                    <ol>
-                        <li>Download the IPA file to your computer</li>
-                        <li>Make sure AltServer is running on your computer</li>
-                        <li>Connect your iPhone to your computer</li>
-                        <li>Open AltStore on your iPhone</li>
-                        <li>Go to "My Apps" tab and tap the "+" button</li>
-                        <li>Select the downloaded IPA file</li>
-                        <li>Wait for AltStore to sign and install the app</li>
-                    </ol>
-                </div>
-            </body>
-            </html>
-            EOL
+            # Create a simple HTML page for direct download - fix syntax by using a here document
+            cat > $CM_BUILD_DIR/AltStore-Package/index.html << 'HTMLEND'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriLens IPA Download</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+        .download-btn {
+            display: inline-block;
+            background-color: #007aff;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .instructions {
+            text-align: left;
+            background-color: #f7f7f7;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .instructions li {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>NutriLens App</h1>
+    <p>Click the button below to download the unsigned IPA file:</p>
+    <a href="NutriLens.ipa" class="download-btn" download>Download NutriLens IPA</a>
+    
+    <div class="instructions">
+        <h2>Installation Instructions:</h2>
+        <ol>
+            <li>Download the IPA file to your computer</li>
+            <li>Make sure AltServer is running on your computer</li>
+            <li>Connect your iPhone to your computer</li>
+            <li>Open AltStore on your iPhone</li>
+            <li>Go to "My Apps" tab and tap the "+" button</li>
+            <li>Select the downloaded IPA file</li>
+            <li>Wait for AltStore to sign and install the app</li>
+        </ol>
+    </div>
+</body>
+</html>
+HTMLEND
             
             # Create metadata JSON for AltStore
-            cat > $CM_BUILD_DIR/AltStore-Package/app.json << EOL
-            {
-              "name": "NutriLens",
-              "bundleIdentifier": "io.nutritlens.app",
-              "version": "1.0.0",
-              "versionDate": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-              "downloadURL": "https://app.codemagic.io/artifacts/$(echo $CM_BUILD_URL | cut -d'/' -f5)/AltStore-Package/NutriLens.ipa",
-              "developerName": "NutriLens",
-              "localizedDescription": "AI-powered nutrition tracking application"
-            }
-            EOL
+            cat > $CM_BUILD_DIR/AltStore-Package/app.json << 'JSONEND'
+{
+  "name": "NutriLens",
+  "bundleIdentifier": "io.nutritlens.app",
+  "version": "1.0.0",
+  "versionDate": "2023-04-03T12:00:00Z",
+  "downloadURL": "https://example.com/NutriLens.ipa",
+  "developerName": "NutriLens",
+  "localizedDescription": "AI-powered nutrition tracking application"
+}
+JSONEND
             
             # Create the zip package
             cd $CM_BUILD_DIR
@@ -217,24 +217,38 @@ workflows:
             # Rename IPA for clarity
             cp $CM_BUILD_DIR/build/ios/App.ipa $CM_BUILD_DIR/NutriLens.ipa
             
-            # Get current date for filename
-            DATE=$(date +"%Y%m%d")
+            # Create a text file with instructions (in case upload fails)
+            cat > $CM_BUILD_DIR/download-link.txt << 'TXTEND'
+NutriLens IPA Download
+
+To install the app:
+1. Download the NutriLens.ipa file from the build artifacts
+2. Transfer it to your computer
+3. Use AltStore to install the app on your device
+
+Alternative installation:
+1. Open the web app in Safari
+2. Tap Share > Add to Home Screen to install as PWA
+TXTEND
             
-            # Upload to file.io
-            RESPONSE=$(curl -F "file=@$CM_BUILD_DIR/NutriLens.ipa" https://file.io)
-            DOWNLOAD_URL=$(echo $RESPONSE | grep -o 'https://file.io/[A-Za-z0-9]*')
-            
-            # Create a text file with the download link
-            echo "NutriLens IPA Download Link (valid for 14 days):" > $CM_BUILD_DIR/download-link.txt
-            echo "$DOWNLOAD_URL" >> $CM_BUILD_DIR/download-link.txt
-            echo "" >> $CM_BUILD_DIR/download-link.txt
-            echo "Instructions:" >> $CM_BUILD_DIR/download-link.txt
-            echo "1. Open this link on your computer" >> $CM_BUILD_DIR/download-link.txt
-            echo "2. Download the IPA file" >> $CM_BUILD_DIR/download-link.txt
-            echo "3. Use AltStore to install the app on your device" >> $CM_BUILD_DIR/download-link.txt
-            
-            echo "IPA uploaded to: $DOWNLOAD_URL"
-            echo "Download link saved to download-link.txt"
+            # Try uploading to file.io (but don't fail if it doesn't work)
+            echo "Attempting to upload to file.io..."
+            if curl -s -F "file=@$CM_BUILD_DIR/NutriLens.ipa" https://file.io > /tmp/response.json; then
+              # Extract URL using grep
+              DOWNLOAD_URL=$(cat /tmp/response.json | grep -o 'https://file.io/[A-Za-z0-9]*')
+              
+              if [ ! -z "$DOWNLOAD_URL" ]; then
+                # Append the URL to the instructions file
+                echo "" >> $CM_BUILD_DIR/download-link.txt
+                echo "Direct download link (valid for 14 days):" >> $CM_BUILD_DIR/download-link.txt
+                echo "$DOWNLOAD_URL" >> $CM_BUILD_DIR/download-link.txt
+                echo "IPA uploaded to: $DOWNLOAD_URL"
+              else
+                echo "Warning: Could not extract download URL from file.io response"
+              fi
+            else
+              echo "Warning: Upload to file.io failed, but build will continue"
+            fi
           else
             echo "No IPA file found to upload"
           fi
