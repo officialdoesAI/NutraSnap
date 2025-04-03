@@ -1,20 +1,16 @@
 workflows:
-  ionic-ios-workflow:
-    name: Ionic iOS Workflow
+  # Simplified workflow specifically for AltStore distribution
+  altstore-build:
+    name: NutriLens AltStore Build
     instance_type: mac_mini_m1
     environment:
       node: latest
       xcode: latest
       cocoapods: default
       vars:
-        APP_ID: "io.nutritlens.app"  # Use your app's bundle identifier
-        BUNDLE_NAME: "NutriLens"
-        APPLE_ID: ${APPLE_ID}
-        APP_STORE_CONNECT_ISSUER_ID: ${APP_STORE_CONNECT_ISSUER_ID}
-        APP_STORE_CONNECT_KEY_IDENTIFIER: ${APP_STORE_CONNECT_KEY_IDENTIFIER}
-        APP_STORE_CONNECT_PRIVATE_KEY: ${APP_STORE_CONNECT_PRIVATE_KEY}
-        CERTIFICATE_PRIVATE_KEY: ${CERTIFICATE_PRIVATE_KEY}
-        XCODE_DEVELOPMENT_TEAM: ${XCODE_DEVELOPMENT_TEAM} # Required for iOS builds
+        BUNDLE_ID: "io.nutritlens.app"
+        XCODE_SCHEME: "App"
+        PRODUCT_NAME: "NutriLens"
     scripts:
       - name: Install npm dependencies
         script: |
@@ -24,71 +20,41 @@ workflows:
         script: |
           npm install -g @ionic/cli
       
-      - name: Build Ionic app
+      - name: Build web app
         script: |
           npm run build
       
       - name: Setup Capacitor
         script: |
           # Make sure the iOS platform is added
-          npx cap add ios
+          npx cap add ios || true
           npx cap sync ios
       
-      - name: Set up code signing settings on Xcode project
+      - name: Set up code signing
         script: |
-          xcode-project use-profiles
-      
-      - name: Build iOS app
-        script: |
+          # Create a temporary keychain
+          KEYCHAIN_NAME="ios-build.keychain"
+          KEYCHAIN_PASSWORD="temporary"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+          security list-keychains -d user -s "$KEYCHAIN_NAME" $(security list-keychains -d user | sed s/\"//g)
+          security set-keychain-settings "$KEYCHAIN_NAME"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+          
+          # If you have a provisioning profile
+          if [ ! -z "$PROVISIONING_PROFILE" ]; then
+            echo $PROVISIONING_PROFILE | base64 --decode > /tmp/profile.mobileprovision
+            mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+            UUID=$(grep -a -A 1 "UUID" /tmp/profile.mobileprovision | grep -o "[-A-Z0-9]\{36\}")
+            cp /tmp/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/"$UUID".mobileprovision
+            echo "Installed provisioning profile $UUID"
+          else
+            echo "No provisioning profile provided, using automatic signing"
+          fi
+          
+          # Update the Xcode project with the team ID
           cd ios/App
-          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
-            -archivePath $CM_BUILD_DIR/build/App.xcarchive archive \
-            CODE_SIGN_IDENTITY="Apple Distribution: ${XCODE_DEVELOPMENT_TEAM_NAME}" \
-            DEVELOPMENT_TEAM=$XCODE_DEVELOPMENT_TEAM
-      
-      - name: Create ipa
-        script: |
-          cd ios/App
-          xcodebuild -exportArchive -archivePath $CM_BUILD_DIR/build/App.xcarchive \
-            -exportPath $CM_BUILD_DIR/build/ios \
-            -exportOptionsPlist $CM_BUILD_DIR/ios/App/exportOptions.plist
-    artifacts:
-      - build/ios/*.ipa
-      - build/ios/manifest.plist
-      - /tmp/xcodebuild_logs/*.log
-      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
-      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
-
-  # Alternative workflow for non-App Store distribution (e.g., AltStore)
-  ionic-ios-altstore:
-    name: Ionic iOS AltStore Build
-    instance_type: mac_mini_m1
-    environment:
-      node: latest
-      xcode: latest
-      cocoapods: default
-      vars:
-        APP_ID: "io.nutritlens.app"
-        BUNDLE_NAME: "NutriLens"
-        XCODE_DEVELOPMENT_TEAM: ${XCODE_DEVELOPMENT_TEAM}
-    scripts:
-      - name: Install npm dependencies
-        script: |
-          npm ci
-      
-      - name: Install Ionic CLI
-        script: |
-          npm install -g @ionic/cli
-      
-      - name: Build Ionic app
-        script: |
-          npm run build
-      
-      - name: Setup Capacitor
-        script: |
-          # Make sure the iOS platform is added
-          npx cap add ios
-          npx cap sync ios
+          echo "Setting team ID to: $XCODE_DEVELOPMENT_TEAM"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID" Info.plist
       
       - name: Create exportOptions.plist for ad-hoc distribution
         script: |
@@ -98,30 +64,46 @@ workflows:
           <plist version="1.0">
           <dict>
             <key>method</key>
-            <string>ad-hoc</string>
+            <string>development</string>
             <key>teamID</key>
             <string>$XCODE_DEVELOPMENT_TEAM</string>
             <key>compileBitcode</key>
             <false/>
+            <key>signingStyle</key>
+            <string>automatic</string>
           </dict>
           </plist>
           EOL
       
-      - name: Build iOS app for ad-hoc distribution
+      - name: Build and archive iOS app
         script: |
           cd ios/App
-          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+          echo "Building with team ID: $XCODE_DEVELOPMENT_TEAM"
+          # For detailed logs
+          set -x 
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug \
             -archivePath $CM_BUILD_DIR/build/App.xcarchive archive \
-            CODE_SIGN_IDENTITY="Apple Developer" \
-            DEVELOPMENT_TEAM=$XCODE_DEVELOPMENT_TEAM
+            -allowProvisioningUpdates \
+            CODE_SIGN_IDENTITY="Apple Development" \
+            DEVELOPMENT_TEAM=$XCODE_DEVELOPMENT_TEAM \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            CODE_SIGN_STYLE=Automatic \
+            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" 2>&1 | tee $CM_BUILD_DIR/xcodebuild_archive.log
       
-      - name: Create ipa for AltStore
+      - name: Create IPA for AltStore
         script: |
           cd ios/App
-          xcodebuild -exportArchive -archivePath $CM_BUILD_DIR/build/App.xcarchive \
-            -exportPath $CM_BUILD_DIR/build/ios \
-            -exportOptionsPlist $CM_BUILD_DIR/ios/App/exportOptions.plist
+          if [ -d "$CM_BUILD_DIR/build/App.xcarchive" ]; then
+            xcodebuild -exportArchive \
+              -archivePath $CM_BUILD_DIR/build/App.xcarchive \
+              -exportPath $CM_BUILD_DIR/build/ios \
+              -exportOptionsPlist exportOptions.plist 2>&1 | tee $CM_BUILD_DIR/xcodebuild_export.log
+          else
+            echo "Archive not found at $CM_BUILD_DIR/build/App.xcarchive"
+            echo "Build failed"
+            exit 1
+          fi
     artifacts:
-      - build/ios/*.ipa
-      - build/ios/manifest.plist
-      - /tmp/xcodebuild_logs/*.log
+      - $CM_BUILD_DIR/build/ios/*.ipa
+      - $CM_BUILD_DIR/xcodebuild_*.log
+      - $CM_BUILD_DIR/build/App.xcarchive/Info.plist
