@@ -1,5 +1,4 @@
 workflows:
-  # Simplified workflow specifically for AltStore distribution (no code signing)
   altstore-build:
     name: NutriLens AltStore Build (Unsigned)
     instance_type: mac_mini_m1
@@ -9,68 +8,45 @@ workflows:
       cocoapods: default
     scripts:
       - name: Install npm dependencies
-        script: |
-          npm ci
+        script: npm ci
       
       - name: Install Ionic CLI
-        script: |
-          npm install -g @ionic/cli
+        script: npm install -g @ionic/cli
       
       - name: Build web app
-        script: |
-          npm run build
+        script: npm run build
       
       - name: Setup Capacitor
         script: |
-          # Make sure the iOS platform is added
           npx cap add ios || true
           npx cap sync ios
       
       - name: Install Codemagic CLI tools
-        script: |
-          pip3 install codemagic-cli-tools
+        script: pip3 install codemagic-cli-tools
       
       - name: Create unsigned IPA
         script: |
-          # Navigate to the iOS project directory
           cd ios/App
-          
-          # Create export options plist for development (no signing)
-          cat > exportOptions.plist << EOL
-          <?xml version="1.0" encoding="UTF-8"?>
+          # Create export options plist
+          echo '<?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>development</string>
-            <key>compileBitcode</key>
-            <false/>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>stripSwiftSymbols</key>
-            <true/>
-            <key>thinning</key>
-            <string>&lt;none&gt;</string>
-          </dict>
-          </plist>
-          EOL
+          <plist version="1.0"><dict>
+            <key>method</key><string>development</string>
+            <key>compileBitcode</key><false/>
+            <key>signingStyle</key><string>manual</string>
+          </dict></plist>' > exportOptions.plist
           
-          # Build the project without codesigning
+          # Build without signing
           xcode-project build-ipa \
             --workspace App.xcworkspace \
             --scheme App \
             --config Debug \
             --no-codesign \
             --output-path $CM_BUILD_DIR/build/ios/App.ipa
-          
-          # Verify that the IPA was created
-          ls -la $CM_BUILD_DIR/build/ios/App.ipa || echo "IPA not created"
       
-      # Fallback approach if xcode-project build-ipa doesn't work
       - name: Fallback - Build Archive
         script: |
           if [ ! -f "$CM_BUILD_DIR/build/ios/App.ipa" ]; then
-            echo "Primary build failed, trying archive method..."
             cd ios/App
             xcodebuild \
               -workspace App.xcworkspace \
@@ -82,7 +58,7 @@ workflows:
               CODE_SIGNING_REQUIRED=NO \
               CODE_SIGNING_ALLOWED=NO
             
-            # Export the archive as IPA
+            # Export the archive
             xcodebuild \
               -exportArchive \
               -archivePath $CM_BUILD_DIR/build/App.xcarchive \
@@ -90,175 +66,62 @@ workflows:
               -exportOptionsPlist exportOptions.plist || true
           fi
       
-      # Second fallback using xcrun
-      - name: Fallback - Package with xcrun
+      - name: Manual IPA packaging
         script: |
           if [ ! -f "$CM_BUILD_DIR/build/ios/App.ipa" ]; then
-            echo "Archive method failed, trying xcrun method..."
             if [ -d "$CM_BUILD_DIR/build/App.xcarchive/Products/Applications/App.app" ]; then
               mkdir -p $CM_BUILD_DIR/build/ios/Payload
               cp -r $CM_BUILD_DIR/build/App.xcarchive/Products/Applications/App.app $CM_BUILD_DIR/build/ios/Payload/
               cd $CM_BUILD_DIR/build/ios
               zip -r App.ipa Payload
-              ls -la App.ipa
-            else
-              echo "No app found in archive to package"
             fi
           fi
       
-      # Create info about the build for debugging
-      - name: Output build info
+      - name: Prepare downloadable files
         script: |
-          echo "=== Build Output Files ==="
-          find $CM_BUILD_DIR/build -type f -name "*.ipa" -o -name "*.app" | sort
-          
-          if [ -d "$CM_BUILD_DIR/build/App.xcarchive" ]; then
-            echo "=== Archive Info ==="
-            cat $CM_BUILD_DIR/build/App.xcarchive/Info.plist || echo "No Info.plist found"
-          fi
-          
-          echo "=== Final IPA Status ==="
-          ls -la $CM_BUILD_DIR/build/ios/App.ipa || echo "IPA not found in expected location"
-      
-      # Create a zip file containing the IPA with altstore-friendly structure
-      - name: Package IPA for AltStore download
-        script: |
+          # Copy IPA with a better name
           if [ -f "$CM_BUILD_DIR/build/ios/App.ipa" ]; then
-            mkdir -p $CM_BUILD_DIR/AltStore-Package
-            cp $CM_BUILD_DIR/build/ios/App.ipa $CM_BUILD_DIR/AltStore-Package/NutriLens.ipa
-            
-            # Create a simple HTML page for direct download - fix syntax by using a here document
-            cat > $CM_BUILD_DIR/AltStore-Package/index.html << 'HTMLEND'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NutriLens IPA Download</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            max-width: 500px;
-            margin: 0 auto;
-            padding: 20px;
-            text-align: center;
-        }
-        h1 {
-            color: #333;
-        }
-        .download-btn {
-            display: inline-block;
-            background-color: #007aff;
-            color: white;
-            padding: 12px 30px;
-            border-radius: 10px;
-            text-decoration: none;
-            font-weight: bold;
-            margin: 20px 0;
-        }
-        .instructions {
-            text-align: left;
-            background-color: #f7f7f7;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-        .instructions li {
-            margin-bottom: 10px;
-        }
-    </style>
-</head>
-<body>
-    <h1>NutriLens App</h1>
-    <p>Click the button below to download the unsigned IPA file:</p>
-    <a href="NutriLens.ipa" class="download-btn" download>Download NutriLens IPA</a>
-    
-    <div class="instructions">
-        <h2>Installation Instructions:</h2>
-        <ol>
-            <li>Download the IPA file to your computer</li>
-            <li>Make sure AltServer is running on your computer</li>
-            <li>Connect your iPhone to your computer</li>
-            <li>Open AltStore on your iPhone</li>
-            <li>Go to "My Apps" tab and tap the "+" button</li>
-            <li>Select the downloaded IPA file</li>
-            <li>Wait for AltStore to sign and install the app</li>
-        </ol>
-    </div>
-</body>
-</html>
-HTMLEND
-            
-            # Create metadata JSON for AltStore
-            cat > $CM_BUILD_DIR/AltStore-Package/app.json << 'JSONEND'
-{
-  "name": "NutriLens",
-  "bundleIdentifier": "io.nutritlens.app",
-  "version": "1.0.0",
-  "versionDate": "2023-04-03T12:00:00Z",
-  "downloadURL": "https://example.com/NutriLens.ipa",
-  "developerName": "NutriLens",
-  "localizedDescription": "AI-powered nutrition tracking application"
-}
-JSONEND
-            
-            # Create the zip package
-            cd $CM_BUILD_DIR
-            zip -r AltStore-NutriLens.zip AltStore-Package
-            echo "AltStore package created at $CM_BUILD_DIR/AltStore-NutriLens.zip"
-          else
-            echo "No IPA file found to package"
-          fi
-      
-      # Upload to file.io for easy download
-      - name: Upload to file.io (temporary file sharing)
-        script: |
-          if [ -f "$CM_BUILD_DIR/build/ios/App.ipa" ]; then
-            # Rename IPA for clarity
             cp $CM_BUILD_DIR/build/ios/App.ipa $CM_BUILD_DIR/NutriLens.ipa
             
-            # Create a text file with instructions (in case upload fails)
-            cat > $CM_BUILD_DIR/download-link.txt << 'TXTEND'
-NutriLens IPA Download
-
-To install the app:
-1. Download the NutriLens.ipa file from the build artifacts
-2. Transfer it to your computer
-3. Use AltStore to install the app on your device
-
-Alternative installation:
-1. Open the web app in Safari
-2. Tap Share > Add to Home Screen to install as PWA
-TXTEND
+            # Create instructions text file
+            echo "NutriLens IPA Installation:
             
-            # Try uploading to file.io (but don't fail if it doesn't work)
-            echo "Attempting to upload to file.io..."
-            if curl -s -F "file=@$CM_BUILD_DIR/NutriLens.ipa" https://file.io > /tmp/response.json; then
-              # Extract URL using grep
-              DOWNLOAD_URL=$(cat /tmp/response.json | grep -o 'https://file.io/[A-Za-z0-9]*')
-              
-              if [ ! -z "$DOWNLOAD_URL" ]; then
-                # Append the URL to the instructions file
-                echo "" >> $CM_BUILD_DIR/download-link.txt
-                echo "Direct download link (valid for 14 days):" >> $CM_BUILD_DIR/download-link.txt
-                echo "$DOWNLOAD_URL" >> $CM_BUILD_DIR/download-link.txt
-                echo "IPA uploaded to: $DOWNLOAD_URL"
-              else
-                echo "Warning: Could not extract download URL from file.io response"
-              fi
+1. Download the NutriLens.ipa file
+2. Transfer it to your computer
+3. Use AltStore to install the app on your iOS device
+            
+Alternative:
+- Open the web version in Safari
+- Add to Home Screen to install as PWA" > $CM_BUILD_DIR/install-instructions.txt
+            
+            # Create a simple HTML download page
+            echo '<!DOCTYPE html><html>
+<head><title>NutriLens IPA Download</title></head>
+<body style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:20px;text-align:center">
+<h1>NutriLens App</h1>
+<p><a href="NutriLens.ipa" style="display:inline-block;background:#007aff;color:white;padding:12px 30px;border-radius:10px;text-decoration:none" download>Download IPA</a></p>
+<div style="text-align:left;background:#f7f7f7;padding:20px;border-radius:10px;margin-top:20px">
+<h2>Installation:</h2>
+<ol><li>Download to computer</li><li>Use AltStore to install</li></ol>
+</div></body></html>' > $CM_BUILD_DIR/download.html
+          fi
+      
+      - name: Create easy file sharing links
+        script: |
+          if [ -f "$CM_BUILD_DIR/NutriLens.ipa" ]; then
+            # Try using file.io service
+            curl -s -F "file=@$CM_BUILD_DIR/NutriLens.ipa" https://file.io > /tmp/file-io-response.txt
+            if grep -q "key" /tmp/file-io-response.txt; then
+              DOWNLOAD_URL=$(grep -o 'https://file.io/[A-Za-z0-9]*' /tmp/file-io-response.txt || echo "Upload failed")
+              echo "Download link: $DOWNLOAD_URL" > $CM_BUILD_DIR/download-link.txt
             else
-              echo "Warning: Upload to file.io failed, but build will continue"
+              echo "File upload failed. Use the IPA directly from artifacts." > $CM_BUILD_DIR/download-link.txt
             fi
-          else
-            echo "No IPA file found to upload"
           fi
     
     artifacts:
-      - $CM_BUILD_DIR/build/ios/*.ipa
       - $CM_BUILD_DIR/NutriLens.ipa
-      - $CM_BUILD_DIR/AltStore-NutriLens.zip
+      - $CM_BUILD_DIR/download.html
+      - $CM_BUILD_DIR/install-instructions.txt
       - $CM_BUILD_DIR/download-link.txt
-      - $CM_BUILD_DIR/AltStore-Package/NutriLens.ipa
-      - $CM_BUILD_DIR/AltStore-Package/index.html
-      - $CM_BUILD_DIR/build/**/*.log
-      - $CM_BUILD_DIR/build/App.xcarchive/Info.plist
+      - $CM_BUILD_DIR/build/ios/*.ipa
