@@ -1,0 +1,7 @@
+{
+  "name": "NutriLens",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "custom"
+}
