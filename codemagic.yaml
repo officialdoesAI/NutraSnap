@@ -1,0 +1,127 @@
+workflows:
+  ionic-ios-workflow:
+    name: Ionic iOS Workflow
+    instance_type: mac_mini_m1
+    environment:
+      node: latest
+      xcode: latest
+      cocoapods: default
+      vars:
+        APP_ID: "io.nutritlens.app"  # Use your app's bundle identifier
+        BUNDLE_NAME: "NutriLens"
+        APPLE_ID: ${APPLE_ID}
+        APP_STORE_CONNECT_ISSUER_ID: ${APP_STORE_CONNECT_ISSUER_ID}
+        APP_STORE_CONNECT_KEY_IDENTIFIER: ${APP_STORE_CONNECT_KEY_IDENTIFIER}
+        APP_STORE_CONNECT_PRIVATE_KEY: ${APP_STORE_CONNECT_PRIVATE_KEY}
+        CERTIFICATE_PRIVATE_KEY: ${CERTIFICATE_PRIVATE_KEY}
+        XCODE_DEVELOPMENT_TEAM: ${XCODE_DEVELOPMENT_TEAM} # Required for iOS builds
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm ci
+      
+      - name: Install Ionic CLI
+        script: |
+          npm install -g @ionic/cli
+      
+      - name: Build Ionic app
+        script: |
+          npm run build
+      
+      - name: Setup Capacitor
+        script: |
+          # Make sure the iOS platform is added
+          npx cap add ios
+          npx cap sync ios
+      
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+      
+      - name: Build iOS app
+        script: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+            -archivePath $CM_BUILD_DIR/build/App.xcarchive archive \
+            CODE_SIGN_IDENTITY="Apple Distribution: ${XCODE_DEVELOPMENT_TEAM_NAME}" \
+            DEVELOPMENT_TEAM=$XCODE_DEVELOPMENT_TEAM
+      
+      - name: Create ipa
+        script: |
+          cd ios/App
+          xcodebuild -exportArchive -archivePath $CM_BUILD_DIR/build/App.xcarchive \
+            -exportPath $CM_BUILD_DIR/build/ios \
+            -exportOptionsPlist $CM_BUILD_DIR/ios/App/exportOptions.plist
+    artifacts:
+      - build/ios/*.ipa
+      - build/ios/manifest.plist
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+
+  # Alternative workflow for non-App Store distribution (e.g., AltStore)
+  ionic-ios-altstore:
+    name: Ionic iOS AltStore Build
+    instance_type: mac_mini_m1
+    environment:
+      node: latest
+      xcode: latest
+      cocoapods: default
+      vars:
+        APP_ID: "io.nutritlens.app"
+        BUNDLE_NAME: "NutriLens"
+        XCODE_DEVELOPMENT_TEAM: ${XCODE_DEVELOPMENT_TEAM}
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm ci
+      
+      - name: Install Ionic CLI
+        script: |
+          npm install -g @ionic/cli
+      
+      - name: Build Ionic app
+        script: |
+          npm run build
+      
+      - name: Setup Capacitor
+        script: |
+          # Make sure the iOS platform is added
+          npx cap add ios
+          npx cap sync ios
+      
+      - name: Create exportOptions.plist for ad-hoc distribution
+        script: |
+          cat > ios/App/exportOptions.plist << EOL
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>ad-hoc</string>
+            <key>teamID</key>
+            <string>$XCODE_DEVELOPMENT_TEAM</string>
+            <key>compileBitcode</key>
+            <false/>
+          </dict>
+          </plist>
+          EOL
+      
+      - name: Build iOS app for ad-hoc distribution
+        script: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+            -archivePath $CM_BUILD_DIR/build/App.xcarchive archive \
+            CODE_SIGN_IDENTITY="Apple Developer" \
+            DEVELOPMENT_TEAM=$XCODE_DEVELOPMENT_TEAM
+      
+      - name: Create ipa for AltStore
+        script: |
+          cd ios/App
+          xcodebuild -exportArchive -archivePath $CM_BUILD_DIR/build/App.xcarchive \
+            -exportPath $CM_BUILD_DIR/build/ios \
+            -exportOptionsPlist $CM_BUILD_DIR/ios/App/exportOptions.plist
+    artifacts:
+      - build/ios/*.ipa
+      - build/ios/manifest.plist
+      - /tmp/xcodebuild_logs/*.log
