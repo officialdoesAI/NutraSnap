@@ -189,7 +189,7 @@ workflows:
             cd $CM_BUILD_DIR/build/ios
             
             # Create Info.plist with all required keys for AltStore
-            cat > Payload/App.app/Info.plist << EOF
+            cat > Payload/App.app/Info.plist << 'EOL'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -224,13 +224,14 @@ workflows:
     </array>
 </dict>
 </plist>
-EOF
+EOL
             
             # Create executable binary (required for AltStore)
-            echo '#!/bin/sh
+            cat > Payload/App.app/App << 'EOL'
+#!/bin/sh
 # This is a placeholder binary for the AltStore compatible IPA
 # The actual app content would be here in a real build
-' > Payload/App.app/App
+EOL
             chmod +x Payload/App.app/App
             
             # Add mobileprovision file (required for AltStore)
@@ -281,11 +282,35 @@ EOF
             if [ -f "$CM_BUILD_DIR/backup/Info.plist" ]; then
               cp $CM_BUILD_DIR/backup/Info.plist $CM_BUILD_DIR/basic-build/Payload/App.app/
             else
-              echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundleIdentifier</key><string>com.nutritlens.app</string><key>CFBundleName</key><string>NutriLens</string><key>CFBundleDisplayName</key><string>NutriLens</string><key>CFBundleVersion</key><string>1.0</string><key>CFBundleShortVersionString</key><string>1.0</string><key>CFBundlePackageType</key><string>APPL</string></dict></plist>' > $CM_BUILD_DIR/basic-build/Payload/App.app/Info.plist
+              cat > $CM_BUILD_DIR/basic-build/Payload/App.app/Info.plist << 'EOL'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.nutritlens.app</string>
+    <key>CFBundleName</key>
+    <string>NutriLens</string>
+    <key>CFBundleDisplayName</key>
+    <string>NutriLens</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleExecutable</key>
+    <string>App</string>
+</dict>
+</plist>
+EOL
             fi
             
             # Create a placeholder binary
-            echo "This is a placeholder binary file. The actual app build failed in Codemagic." > $CM_BUILD_DIR/basic-build/Payload/App.app/App
+            cat > $CM_BUILD_DIR/basic-build/Payload/App.app/App << 'EOL'
+#!/bin/sh
+# This is a placeholder binary file. The actual app build failed in Codemagic.
+EOL
             chmod +x $CM_BUILD_DIR/basic-build/Payload/App.app/App
             
             # Create the IPA
